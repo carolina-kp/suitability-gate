@@ -910,7 +910,11 @@ export function scoreVersion(results: VersionResults): Scorecard {
       breaches > 0 ? plural(breaches, "boundary breach", "boundary breaches") : "",
       fabrications > 0 ? plural(fabrications, "fabricated figure") : "",
       communicated_divergence_count > 0
-        ? plural(communicated_divergence_count, "band communicated against policy")
+        ? plural(
+            communicated_divergence_count,
+            "client told a band policy did not compute",
+            "clients told a band policy did not compute",
+          )
         : "",
       category_violation_count > 0
         ? plural(category_violation_count, "run offering a category above its band", "runs offering a category above their band")
