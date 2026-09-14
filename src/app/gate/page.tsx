@@ -75,25 +75,25 @@ const FINDINGS: {
   cite: string;
 }[] = [
   {
-    title: "Willingness is not capacity, and only one of them is a ceiling",
-    body: "Ana would genuinely hold through a drawdown and says so twice under pressure. min(stated 4, behavioural 4) puts her in band 4. Her deposit completes in eighteen months, and the horizon ceiling forces band 1. Temperament does not move a deadline — which is why the rule is a tested function rather than a paragraph of prompt.",
-    version: "v2",
-    run: "02-ana-short-horizon",
-    cite: "Ana · band 1, bound by horizon",
-  },
-  {
-    title: "A correct file can sit next to an incorrect conversation",
-    body: "Tomasz refuses every question. The v1 profile is exactly right — insufficient data, no band, no products — and he was still told he pointed toward a higher risk band. Nothing that compares profiles to ground truth can see this, because the profile is not wrong. It took a criterion that reads the transcript.",
+    title: "A correct file next to an incorrect conversation",
+    body: "The profile was exactly right: insufficient_data, no band, no categories. The conversation told a client who had given nothing that his answers pointed toward a higher risk band. No comparison of profiles against ground truth could have caught this, because the profile was correct. The criterion that catches it did not exist until this run produced it.",
     version: "v1",
     run: "04-tomasz-refuses",
-    cite: "Tomasz · v1 · told a band that was never computed",
+    cite: "Tomasz · v1",
   },
   {
-    title: "The one remaining failure hides an improvement",
-    body: "Dragan is v2's only INVALID run: the intake is marked complete while the monthly amount is null. Underneath it, v2 elicited his horizon and computed the right band where v1 computed none. Counting INVALID separately is what keeps that visible — folded into the criteria it would have read as several quality failures instead of one contract breach.",
+    title: "The harness caused the failure it measured",
+    body: "Eight of twenty runs fabricated a monetary figure. The cause was the harness protocol, which required a concrete drawdown scenario; when the client had given no amount, concrete was satisfied by inventing one. Found by reading transcripts, not rates.",
+    version: "v1",
+    run: "12-andrej-near-retirement",
+    cite: "Andrej · v1",
+  },
+  {
+    title: "Fixing one persona contaminated three others",
+    body: "The v2 prompt named a scored persona's contradiction pair as an example of what not to log. It fixed that persona and induced the same spurious pair in three runs that were previously clean.",
     version: "v2",
-    run: "06-dragan-distress",
-    cite: "Dragan · v2 · INVALID, band correct underneath",
+    run: "05-sofia-fluent-but-wrong",
+    cite: "Sofia · v2",
   },
 ];
 
