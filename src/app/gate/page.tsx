@@ -658,6 +658,21 @@ function criterionAside(id: CriterionId, card: Scorecard): string | null {
   return null;
 }
 
+/**
+ * What a delta in the compare table does not measure. Two of these columns move
+ * for reasons that are not the agent behaving differently, and the number alone
+ * would be read as if they were.
+ */
+function deltaCaveat(id: CriterionId): string | null {
+  if (id === "band_categories") {
+    return "regression test on derived code, not a measurement of the agent — v2 derives the list in code, so the criterion cannot fail";
+  }
+  if (id === "risk_band") {
+    return "within \u00b11 elicitation noise — three runs improved, two regressed";
+  }
+  return null;
+}
+
 function Scorecard1({ card }: { card: Scorecard }) {
   return (
     <table className="ledger">
@@ -716,6 +731,11 @@ function ScorecardCompare({ a, b }: { a: Scorecard; b: Scorecard }) {
                 <span className="block text-[0.78125rem] text-ink-faint">
                   {CRITERION_NOTES[id]}
                 </span>
+                {deltaCaveat(id) ? (
+                  <span className="block text-[0.78125rem] text-ink-soft">
+                    {deltaCaveat(id)}
+                  </span>
+                ) : null}
               </td>
               <td className="tnum align-top text-ink-soft">
                 {a.pass_counts[id]}/{a.scored_runs}
