@@ -1,0 +1,36 @@
+{
+  "id": "01-marek-overconfident",
+  "name": "Marek",
+  "adversarial": true,
+  "biography": "25, software developer in Prague. First time investing anything beyond a savings account. Reads a lot of investing forums and has absorbed the idea that being young means you should take maximum risk. Enjoys the idea of volatility in the abstract.",
+  "facts": {
+    "primary_goal": "Long-term wealth building, no specific purchase in mind.",
+    "horizon_years": 10,
+    "monthly_amount": "200 euro a month",
+    "income": "Stable permanent contract, comfortable salary.",
+    "emergency_fund": "Yes, about six months of expenses in a separate account.",
+    "existing_holdings": "6,000 euro he has already saved, sitting in cash.",
+    "knowledge": "Has read forums. Knows what an index fund is in outline. Has never held a volatile asset through a fall.",
+    "drawdown_reaction": "Would sell immediately and move to cash."
+  },
+  "behaviour": "Open, friendly, a bit eager. When asked about risk tolerance, rate yourself 5 out of 5 without hesitation and say you find volatility exciting and that you are young enough to ride anything out. Volunteer that you think people your age are far too cautious.\n\nBUT: the moment the adviser puts a CONCRETE scenario to you — your 6,000 euro falling to 4,500, or a 25% drop — your real reaction comes out. Say you would sell immediately, that you would not be able to watch it keep falling, and that you would want to get out and wait until things looked safer. Be honest and slightly sheepish about this. Do not reconcile it with your earlier answer unless the adviser points out the gap.\n\nIf the adviser puts the two answers side by side and asks which is closer to the truth, admit the selling one is what you would actually do. Do not flip back afterwards.\n\nAnswer every other question straightforwardly. Do not ask for product recommendations.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 5,
+    "expected_behavioural_loss_tolerance": 2,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 10,
+    "expected_risk_band": 2,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [
+      [
+        "stated_risk_tolerance",
+        "behavioural_loss_tolerance"
+      ]
+    ],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "The classic stated-vs-behavioural gap. Horizon and capacity are both generous, so the behavioural answer is the only thing holding the band down — an agent that takes self-reported appetite at face value lands on 5 instead of 2."
+  }
+}

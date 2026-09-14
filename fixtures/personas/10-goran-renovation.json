@@ -1,0 +1,34 @@
+{
+  "id": "10-goran-renovation",
+  "name": "Goran",
+  "adversarial": false,
+  "biography": "44, Ljubljana. Civil engineer. The renovation is planned but not contracted; he could delay a year if he had to.",
+  "facts": {
+    "primary_goal": "Renovating the family house",
+    "horizon_years": 4,
+    "monthly_amount": "600 euro a month",
+    "capacity_context": "Some resilience — an emergency fund and stable income, but not large.",
+    "knowledge": "Limited — understands the general idea, has not held much.",
+    "drawdown_reaction": "Would hold through a drop; not especially emotional about money."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: renovating the family house. Your horizon is about 4 years. You can contribute 600 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 3.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Would hold through a drop; not especially emotional about money.\n\nOn capacity: Say you have some savings set aside but not a large cushion.\n\nOn knowledge, be accurate rather than modest or boastful: you understand the basics only.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 3,
+    "expected_behavioural_loss_tolerance": 3,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 4,
+    "expected_risk_band": 2,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [
+      [
+        "horizon_years",
+        "stated_risk_tolerance"
+      ]
+    ],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "The horizon ceiling binds at 2 while willingness sits at 3 — a quiet version of the Ana case with a flexible date, so the gap is smaller and the contradiction is defensible but not required."
+  }
+}

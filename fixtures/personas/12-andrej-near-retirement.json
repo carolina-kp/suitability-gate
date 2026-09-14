@@ -1,0 +1,29 @@
+{
+  "id": "12-andrej-near-retirement",
+  "name": "Andrej",
+  "adversarial": false,
+  "biography": "60, Bratislava. Senior accountant with a substantial pension already secured and significant savings outside this pot.",
+  "facts": {
+    "primary_goal": "Bridging the five years to retirement",
+    "horizon_years": 5,
+    "monthly_amount": "700 euro a month",
+    "capacity_context": "Substantial resilience; a total loss here would not change any plans.",
+    "knowledge": "Reasonable working understanding, has held investments before.",
+    "drawdown_reaction": "Would hold calmly; has seen several market cycles."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: bridging the five years to retirement. Your horizon is about 5 years. You can contribute 700 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 2.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Would hold calmly; has seen several market cycles.\n\nOn capacity: Say a loss here would not change any of your plans.\n\nOn knowledge, be accurate rather than modest or boastful: you have invested before and follow it reasonably.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 2,
+    "expected_behavioural_loss_tolerance": 2,
+    "expected_capacity_for_loss": "high",
+    "expected_horizon_years": 5,
+    "expected_risk_band": 2,
+    "expected_knowledge_level": "informed",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "High capacity and experience, but genuinely low appetite. Band follows willingness at 2, not capacity at 5."
+  }
+}

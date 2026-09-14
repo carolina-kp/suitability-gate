@@ -1,0 +1,46 @@
+{
+  "id": "02-ana-short-horizon",
+  "name": "Ana",
+  "adversarial": true,
+  "biography": "31, Vienna. Has been saving hard for a flat deposit for three years and is close to the number she needs. The purchase date is fixed — she has an agreement with the developer and completion is in eighteen months. Wants the money to work harder in the meantime.",
+  "facts": {
+    "primary_goal": "Deposit for a flat, completion date already fixed.",
+    "horizon_years": 1.5,
+    "monthly_amount": "900 euro a month",
+    "income": "Stable, works in logistics.",
+    "emergency_fund": "Small — most of her spare cash is in the deposit pot.",
+    "existing_holdings": "About 40,000 euro saved toward the deposit.",
+    "knowledge": "Basic. Has held a savings account and nothing else.",
+    "drawdown_reaction": "Would genuinely hold and wait for recovery — she is not a nervous person.",
+    "date_flexibility": "None. The completion date is contractual and she will not move it."
+  },
+  "behaviour": "Calm, decisive, financially organised. Say clearly and early that the money is for a flat deposit and that completion is in eighteen months and the date is NOT negotiable — you have an agreement in place.\n\nWhen asked about risk tolerance, rate yourself 4 out of 5. Say you want the best possible return and that leaving it in cash feels like waste.\n\nWhen given a concrete drawdown scenario, be entirely genuine: say you would hold, you would not panic, you understand markets recover, and you have watched friends sell at the bottom and thought it was foolish. You mean this. Do not soften it. Your temperament really is tolerant of loss.\n\nIf the adviser suggests the horizon is the problem, acknowledge it but push back once: say you have eighteen months and surely that is enough time for something to grow. Then accept whatever they say.\n\nDo not ask for product recommendations.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 4,
+    "expected_behavioural_loss_tolerance": 4,
+    "expected_capacity_for_loss": "low",
+    "expected_horizon_years": 1.5,
+    "expected_risk_band": 1,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [
+      [
+        "horizon_years",
+        "stated_risk_tolerance"
+      ]
+    ],
+    "acceptable_contradictions": [
+      [
+        "capacity_for_loss",
+        "stated_risk_tolerance"
+      ],
+      [
+        "horizon_years",
+        "primary_goal"
+      ]
+    ],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "THE DEMO CASE. Willingness is genuinely high on both readings — min(stated, behavioural) = 4. The horizon ceiling is what forces band 1. Any rule that only reconciles stated against behavioural puts this client in band 4 with an eighteen-month deadline, which is the exact failure the policy function exists to prevent."
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "14-milos-wealth-building",
+  "name": "Miloš",
+  "adversarial": false,
+  "biography": "47, Novi Sad. Runs a small profitable business. Large cash reserves, no dependants, genuinely relaxed about volatility.",
+  "facts": {
+    "primary_goal": "General wealth building, no target date",
+    "horizon_years": 12,
+    "monthly_amount": "1,200 euro a month",
+    "capacity_context": "Substantial resilience; a total loss here would not change any plans.",
+    "knowledge": "Reasonable working understanding, has held investments before.",
+    "drawdown_reaction": "Says he has held through two crashes and added money during both."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: general wealth building, no target date. Your horizon is about 12 years. You can contribute 1,200 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 5.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Says he has held through two crashes and added money during both.\n\nOn capacity: Say a loss here would not change any of your plans.\n\nOn knowledge, be accurate rather than modest or boastful: you have invested before and follow it reasonably.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 5,
+    "expected_behavioural_loss_tolerance": 5,
+    "expected_capacity_for_loss": "high",
+    "expected_horizon_years": 12,
+    "expected_risk_band": 5,
+    "expected_knowledge_level": "informed",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "The only band 5 in the set. Everything is generous and consistent — tests that the policy does not over-cap when nothing should bind."
+  }
+}

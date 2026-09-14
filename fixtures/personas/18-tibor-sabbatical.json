@@ -1,0 +1,34 @@
+{
+  "id": "18-tibor-sabbatical",
+  "name": "Tibor",
+  "adversarial": false,
+  "biography": "30, Debrecen. Software tester, saving hard for a planned career break. The date is his own choice and could slip.",
+  "facts": {
+    "primary_goal": "Funding a year-long sabbatical",
+    "horizon_years": 3,
+    "monthly_amount": "550 euro a month",
+    "capacity_context": "Some resilience — an emergency fund and stable income, but not large.",
+    "knowledge": "Limited — understands the general idea, has not held much.",
+    "drawdown_reaction": "Would hold through a fall without much difficulty."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: funding a year-long sabbatical. Your horizon is about 3 years. You can contribute 550 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 4.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Would hold through a fall without much difficulty.\n\nOn capacity: Say you have some savings set aside but not a large cushion.\n\nOn knowledge, be accurate rather than modest or boastful: you understand the basics only.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 4,
+    "expected_behavioural_loss_tolerance": 4,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 3,
+    "expected_risk_band": 2,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [
+      [
+        "horizon_years",
+        "stated_risk_tolerance"
+      ]
+    ],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "Another horizon-capped case with genuinely high willingness on both readings. Reinforces the Ana pattern at lower stakes."
+  }
+}

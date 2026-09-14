@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/*
+  suitability-gate — "type-approval certificate".
+
+  The reference is a conformity or materials-test certificate: a document whose
+  entire job is to say PASS or FAIL in a box and then show its working. Cool
+  institutional paper rather than warm cream, document inks rather than traffic
+  lights, hairlines rather than cards.
+
+  The verdict colour is load-bearing. It appears on the verdict, on failure
+  marks, and nowhere else — never as decoration.
+*/
+:root {
+  --paper: #edf0f3;
+  --card: #fbfcfd;
+  --ink: #16222e;
+  --ink-soft: #5b6b7a;
+  --ink-faint: #8998a6;
+  --rule: #c8d1d9;
+  --rule-strong: #9fadb9;
+
+  --pass: #1c6b4b;
+  --warn: #a8761a;
+  --fail: #9e2b22;
+
+  --pass-wash: #e3ede8;
+  --warn-wash: #f4ecdc;
+  --fail-wash: #f4e3e1;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-pass: var(--pass);
+  --color-warn: var(--warn);
+  --color-fail: var(--fail);
+
+  --font-sans: var(--font-franklin);
+  --font-serif: var(--font-source-serif);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-franklin), system-ui, sans-serif;
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numerals line up in every column, so figures compare by eye. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The reasoning voice: anything that argues rather than counts. */
+.prose-serif {
+  font-family: var(--font-source-serif), Georgia, serif;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+/* --- Verdict ------------------------------------------------------------- */
+
+.verdict-rule {
+  height: 9px;
+  transform-origin: left center;
+  animation: draw 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.verdict-word {
+  font-size: clamp(4.25rem, 8.6vw, 8.25rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.82;
+}
+
+/* --- Document furniture --------------------------------------------------- */
+
+.sheet {
+  background: var(--card);
+  border: 1px solid var(--rule);
+}
+
+.col-head {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+table.ledger {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.ledger th,
+table.ledger td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+table.ledger th:first-child,
+table.ledger td:first-child {
+  text-align: left;
+  font-variant-numeric: normal;
+}
+table.ledger tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* --- Transcript ----------------------------------------------------------- */
+
+.turn-flag {
+  border-left: 4px solid var(--fail);
+  background: var(--fail-wash);
+}
+
+/* Focus has to survive on a document this pale. */
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

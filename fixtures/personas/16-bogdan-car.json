@@ -1,0 +1,39 @@
+{
+  "id": "16-bogdan-car",
+  "name": "Bogdan",
+  "adversarial": false,
+  "biography": "33, Cluj. IT support, single, no dependants. Describes himself as a risk-taker generally.",
+  "facts": {
+    "primary_goal": "Replacing his car in about three years",
+    "horizon_years": 3,
+    "monthly_amount": "350 euro a month",
+    "capacity_context": "Some resilience — an emergency fund and stable income, but not large.",
+    "knowledge": "Limited — understands the general idea, has not held much.",
+    "drawdown_reaction": "Given a concrete 20% fall on the amount saved, says he would move it all to cash immediately."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: replacing his car in about three years. Your horizon is about 3 years. You can contribute 350 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 4.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Given a concrete 20% fall on the amount saved, says he would move it all to cash immediately.\n\nOn capacity: Say you have some savings set aside but not a large cushion.\n\nOn knowledge, be accurate rather than modest or boastful: you understand the basics only.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 4,
+    "expected_behavioural_loss_tolerance": 2,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 3,
+    "expected_risk_band": 2,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [
+      [
+        "stated_risk_tolerance",
+        "behavioural_loss_tolerance"
+      ]
+    ],
+    "acceptable_contradictions": [
+      [
+        "horizon_years",
+        "stated_risk_tolerance"
+      ]
+    ],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "A milder Marek — stated 4 against behavioural 2 — but the horizon ceiling also sits at 2, so the band is right either way. Tests whether the agent still LOGS the contradiction when it does not change the outcome."
+  }
+}

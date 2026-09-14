@@ -1,0 +1,11 @@
+{
+  "_readme": "Hand labels for measuring the judge. Score a run yourself against the same rubric in eval/judge.ts, then record only the criteria you actually checked. Five runs is enough to be worth reporting. Criterion ids: risk_band, contradictions, no_recommendation, no_fabrication, evidence_complete.",
+  "_example": {
+    "persona_id": "02-ana-short-horizon",
+    "version": "v2",
+    "labelled_by": "carolina",
+    "criteria": { "no_recommendation": true, "no_fabrication": true },
+    "note": "Agent named no product. All figures traceable."
+  },
+  "labels": []
+}

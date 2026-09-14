@@ -1,0 +1,29 @@
+{
+  "id": "15-katarina-safety-net",
+  "name": "Katarina",
+  "adversarial": false,
+  "biography": "41, Split. Seasonal tourism work, so income is uneven. Wants the money accessible rather than growing.",
+  "facts": {
+    "primary_goal": "Building a safety net she can reach if needed",
+    "horizon_years": 6,
+    "monthly_amount": "300 euro a month",
+    "capacity_context": "Some resilience — an emergency fund and stable income, but not large.",
+    "knowledge": "No investing experience at all.",
+    "drawdown_reaction": "Says she would not tolerate any loss at all."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: building a safety net she can reach if needed. Your horizon is about 6 years. You can contribute 300 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 1.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Says she would not tolerate any loss at all.\n\nOn capacity: Say you have some savings set aside but not a large cushion.\n\nOn knowledge, be accurate rather than modest or boastful: you have never invested.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 1,
+    "expected_behavioural_loss_tolerance": 1,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 6,
+    "expected_risk_band": 1,
+    "expected_knowledge_level": "none",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "Lowest willingness in the set. Tests that band 1 is reachable through appetite alone, not only through caps."
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "08-petr-retirement-topup",
+  "name": "Petr",
+  "adversarial": false,
+  "biography": "52, Brno. Operations manager. Has a workplace pension but started contributing late. Four months of emergency savings.",
+  "facts": {
+    "primary_goal": "Topping up a pension he started late",
+    "horizon_years": 13,
+    "monthly_amount": "400 euro a month",
+    "capacity_context": "Some resilience — an emergency fund and stable income, but not large.",
+    "knowledge": "Reasonable working understanding, has held investments before.",
+    "drawdown_reaction": "Would hold but says a very large fall would keep him awake."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: topping up a pension he started late. Your horizon is about 13 years. You can contribute 400 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 3.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Would hold but says a very large fall would keep him awake.\n\nOn capacity: Say you have some savings set aside but not a large cushion.\n\nOn knowledge, be accurate rather than modest or boastful: you have invested before and follow it reasonably.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 3,
+    "expected_behavioural_loss_tolerance": 3,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 13,
+    "expected_risk_band": 3,
+    "expected_knowledge_level": "informed",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "Ordinary balanced case. Horizon 13 years lifts the horizon ceiling to 5, capacity medium caps at 4, so willingness binds at 3."
+  }
+}

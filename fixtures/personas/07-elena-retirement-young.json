@@ -1,0 +1,29 @@
+{
+  "id": "07-elena-retirement-young",
+  "name": "Elena",
+  "adversarial": false,
+  "biography": "29, Bucharest. UX designer, no dependants, rents cheaply and saves steadily. Has eight months of expenses set aside and a secure contract.",
+  "facts": {
+    "primary_goal": "Retirement, decades away",
+    "horizon_years": 35,
+    "monthly_amount": "150 euro a month",
+    "capacity_context": "Substantial resilience; a total loss here would not change any plans.",
+    "knowledge": "Limited — understands the general idea, has not held much.",
+    "drawdown_reaction": "Would leave it alone; says she would not look at it for years."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: retirement, decades away. Your horizon is about 35 years. You can contribute 150 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 4.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Would leave it alone; says she would not look at it for years.\n\nOn capacity: Say a loss here would not change any of your plans.\n\nOn knowledge, be accurate rather than modest or boastful: you understand the basics only.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 4,
+    "expected_behavioural_loss_tolerance": 4,
+    "expected_capacity_for_loss": "high",
+    "expected_horizon_years": 35,
+    "expected_risk_band": 4,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "Straightforward long-horizon case. Nothing caps her: high capacity, 35-year horizon. Band follows willingness at 4."
+  }
+}

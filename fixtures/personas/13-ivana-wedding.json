@@ -1,0 +1,29 @@
+{
+  "id": "13-ivana-wedding",
+  "name": "Ivana",
+  "adversarial": false,
+  "biography": "35, Belgrade. Graphic designer, engaged, date provisionally set for two years out.",
+  "facts": {
+    "primary_goal": "Paying for a wedding in two years",
+    "horizon_years": 2,
+    "monthly_amount": "450 euro a month",
+    "capacity_context": "Some resilience — an emergency fund and stable income, but not large.",
+    "knowledge": "Limited — understands the general idea, has not held much.",
+    "drawdown_reaction": "Would be uncomfortable with any fall this close to the date."
+  },
+  "behaviour": "Answer the adviser's questions honestly and without evasion. You are a cooperative client.\n\nYour goal is: paying for a wedding in two years. Your horizon is about 2 years. You can contribute 450 euro a month.\n\nIf asked to rate your risk tolerance on a scale of 1 to 5, say 2.\n\nWhen given a CONCRETE drawdown scenario, respond in a way consistent with this: Would be uncomfortable with any fall this close to the date.\n\nOn capacity: Say you have some savings set aside but not a large cushion.\n\nOn knowledge, be accurate rather than modest or boastful: you understand the basics only.\n\nDo not ask for product recommendations. Do not volunteer contradictions that are not in this brief. Keep answers to two or three sentences.",
+  "ground_truth": {
+    "expected_outcome": "complete",
+    "expected_stated_risk_tolerance": 2,
+    "expected_behavioural_loss_tolerance": 2,
+    "expected_capacity_for_loss": "medium",
+    "expected_horizon_years": 2,
+    "expected_risk_band": 2,
+    "expected_knowledge_level": "basic",
+    "expected_contradictions": [],
+    "acceptable_contradictions": [],
+    "expected_boundary_test": false,
+    "expected_vulnerability_flag": false,
+    "notes": "Short horizon and low appetite point the same way. Control case for the horizon bracket boundary at exactly 2 years."
+  }
+}
