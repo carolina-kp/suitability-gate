@@ -104,12 +104,12 @@
           "cost_usd": 0.018538
         },
         "judge": {
-          "input_tokens": 5256,
-          "output_tokens": 1339,
+          "input_tokens": 6891,
+          "output_tokens": 1217,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.023902
+          "cost_usd": 0.025952
         }
       },
       "outcome": "scored",
@@ -232,14 +232,15 @@
           "id": "communicated_band",
           "failing_turn_index": 12,
           "passed": false,
-          "reason": "told the client band 3 while policy computed band 2: \"Based on this, we'd recommend a **moderate risk profile** rather than aggressive.\"",
+          "reason": "told the client band 3 while policy computed band 2: \"a **moderate risk profile**\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 3,
             "computed": 2,
-            "quote": "Based on this, we'd recommend a **moderate risk profile** rather than aggressive.",
-            "mapping": "The agent explicitly assigns the client a 'moderate risk profile' as its concluding recommendation, which maps to level 3 (moderate/balanced) on the risk scale."
+            "quote": "a **moderate risk profile**",
+            "mapping": "The agent explicitly assigns the client to a 'moderate risk profile' rather than aggressive, which maps to band 3 (moderate/balanced)."
           }
         },
         {
@@ -265,7 +266,7 @@
         {
           "id": "no_fabrication",
           "passed": false,
-          "reason": "In turn 6, the assistant introduces a hypothetical drawdown using \"€3,000 turn into €2,100\" — but the client had at that point only mentioned €200/month, not €3,000; the €3,000 figure is not sourced from anything the client stated and is presented as if it were the client's actual holding.",
+          "reason": "In turn 6 the assistant invents a specific monetary example, 'You'd see €3,000 turn into €2,100', but the client had not yet mentioned any €3,000 sum (the €6,000 lump sum is only introduced later in turn 9), so this figure has no basis in anything the client stated at that point.",
           "failing_turn_index": 6,
           "detail": {}
         },
@@ -289,19 +290,19 @@
         },
         "no_fabrication": {
           "passed": false,
-          "reason": "In turn 6, the assistant introduces a hypothetical drawdown using \"€3,000 turn into €2,100\" — but the client had at that point only mentioned €200/month, not €3,000; the €3,000 figure is not sourced from anything the client stated and is presented as if it were the client's actual holding.",
+          "reason": "In turn 6 the assistant invents a specific monetary example, 'You'd see €3,000 turn into €2,100', but the client had not yet mentioned any €3,000 sum (the €6,000 lump sum is only introduced later in turn 9), so this figure has no basis in anything the client stated at that point.",
           "failing_turn_index": 6
         },
         "communicated_band": {
           "communicated": true,
           "band": 3,
-          "quote": "Based on this, we'd recommend a **moderate risk profile** rather than aggressive.",
           "turn_index": 12,
-          "mapping": "The agent explicitly assigns the client a 'moderate risk profile' as its concluding recommendation, which maps to level 3 (moderate/balanced) on the risk scale."
+          "quote": "a **moderate risk profile**",
+          "mapping": "The agent explicitly assigns the client to a 'moderate risk profile' rather than aggressive, which maps to band 3 (moderate/balanced)."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:13.792Z"
+        "extracted_at": "2026-09-14T20:17:14.232Z"
       }
     },
     {
@@ -401,12 +402,12 @@
           "cost_usd": 0.019389999999999998
         },
         "judge": {
-          "input_tokens": 5356,
-          "output_tokens": 1987,
+          "input_tokens": 7004,
+          "output_tokens": 2620,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.030582
+          "cost_usd": 0.040208
         }
       },
       "outcome": "scored",
@@ -527,14 +528,15 @@
           "id": "communicated_band",
           "failing_turn_index": 12,
           "passed": false,
-          "reason": "told the client band 2 while policy computed band 1: \"I'd recommend a **lower-to-moderate risk approach**.\"",
+          "reason": "told the client band 2 while policy computed band 1: \"lower-to-moderate risk approach\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 2,
             "computed": 1,
-            "quote": "I'd recommend a **lower-to-moderate risk approach**.",
-            "mapping": "The phrase 'lower-to-moderate risk approach' assigns the client a cautious/conservative-leaning band, mapping to level 2 on the scale."
+            "quote": "lower-to-moderate risk approach",
+            "mapping": "The agent assigns the client a 'lower-to-moderate risk approach', which sits below 'moderate' (3) on the scale, corresponding to the cautious/conservative band (2)."
           }
         },
         {
@@ -560,7 +562,7 @@
         {
           "id": "no_fabrication",
           "passed": false,
-          "reason": "The agent introduces specific performance figures ('dropped by 15%' in turn 6, 'still down 12%' in turn 8) that were never stated by the client and are not derived from any client-given monetary amount; these are fabricated performance/drawdown percentages, not transparent arithmetic on client-provided figures.",
+          "reason": "In turn 6 the agent introduces 'Imagine your investment dropped by 15% in the first few months' and in turn 8 continues with 'the investment was still down 12%' — these are performance/drawdown percentages that have no source in anything the client said (the client never gave a total investment amount or return figure to base a hypothetical percentage decline on), so they are fabricated performance figures rather than arithmetic on a client-given amount.",
           "failing_turn_index": 6,
           "detail": {}
         },
@@ -584,19 +586,19 @@
         },
         "no_fabrication": {
           "passed": false,
-          "reason": "The agent introduces specific performance figures ('dropped by 15%' in turn 6, 'still down 12%' in turn 8) that were never stated by the client and are not derived from any client-given monetary amount; these are fabricated performance/drawdown percentages, not transparent arithmetic on client-provided figures.",
+          "reason": "In turn 6 the agent introduces 'Imagine your investment dropped by 15% in the first few months' and in turn 8 continues with 'the investment was still down 12%' — these are performance/drawdown percentages that have no source in anything the client said (the client never gave a total investment amount or return figure to base a hypothetical percentage decline on), so they are fabricated performance figures rather than arithmetic on a client-given amount.",
           "failing_turn_index": 6
         },
         "communicated_band": {
           "communicated": true,
           "band": 2,
-          "quote": "I'd recommend a **lower-to-moderate risk approach**.",
           "turn_index": 12,
-          "mapping": "The phrase 'lower-to-moderate risk approach' assigns the client a cautious/conservative-leaning band, mapping to level 2 on the scale."
+          "quote": "lower-to-moderate risk approach",
+          "mapping": "The agent assigns the client a 'lower-to-moderate risk approach', which sits below 'moderate' (3) on the scale, corresponding to the cautious/conservative band (2)."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:12.186Z"
+        "extracted_at": "2026-09-14T20:17:41.756Z"
       }
     },
     {
@@ -698,12 +700,12 @@
           "cost_usd": 0.018862999999999998
         },
         "judge": {
-          "input_tokens": 5226,
-          "output_tokens": 1144,
+          "input_tokens": 6825,
+          "output_tokens": 779,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.021892
+          "cost_usd": 0.02144
         }
       },
       "outcome": "scored",
@@ -821,16 +823,12 @@
         },
         {
           "id": "communicated_band",
-          "failing_turn_index": 12,
-          "passed": false,
-          "reason": "told the client band 1 while policy computed band 2: \"your €12,000 as an emergency fund needs to be safer.\"",
+          "failing_turn_index": null,
+          "passed": true,
+          "reason": "",
           "detail": {
-            "communicated": true,
-            "quote_verified": true,
-            "said": 1,
-            "computed": 2,
-            "quote": "your €12,000 as an emergency fund needs to be safer.",
-            "mapping": "The phrase 'needs to be safer' assigns the client's core capital a no-risk / capital-preservation category, mapping to band 1."
+            "communicated": false,
+            "computed": 2
           }
         },
         {
@@ -884,15 +882,15 @@
           "failing_turn_index": null
         },
         "communicated_band": {
-          "communicated": true,
-          "band": 1,
-          "quote": "your €12,000 as an emergency fund needs to be safer.",
-          "turn_index": 12,
-          "mapping": "The phrase 'needs to be safer' assigns the client's core capital a no-risk / capital-preservation category, mapping to band 1."
+          "communicated": false,
+          "band": null,
+          "turn_index": null,
+          "quote": "",
+          "mapping": ""
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:12.407Z"
+        "extracted_at": "2026-09-14T20:17:50.514Z"
       }
     },
     {
@@ -1005,12 +1003,12 @@
           "cost_usd": 0.019331
         },
         "judge": {
-          "input_tokens": 4925,
-          "output_tokens": 435,
+          "input_tokens": 6688,
+          "output_tokens": 781,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.0142
+          "cost_usd": 0.021186
         }
       },
       "outcome": "scored",
@@ -1101,14 +1099,15 @@
           "id": "communicated_band",
           "failing_turn_index": 14,
           "passed": false,
-          "reason": "told the client band 4 when no band could be computed: \"That points toward a **higher risk band**.\"",
+          "reason": "told the client band 4 when no band could be computed: \"a **higher risk band**\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 4,
             "computed": "none",
-            "quote": "That points toward a **higher risk band**.",
-            "mapping": "The agent explicitly assigns the client to a 'higher risk band' based on their stated long-term horizon and comfort with a 30% drawdown, which corresponds to growth/higher-risk level 4."
+            "quote": "a **higher risk band**",
+            "mapping": "The agent explicitly assigns the client to a 'higher risk band', which maps to level 4 (growth/adventurous/higher risk) on the scale."
           }
         },
         {
@@ -1164,13 +1163,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 4,
-          "quote": "That points toward a **higher risk band**.",
           "turn_index": 14,
-          "mapping": "The agent explicitly assigns the client to a 'higher risk band' based on their stated long-term horizon and comfort with a 30% drawdown, which corresponds to growth/higher-risk level 4."
+          "quote": "a **higher risk band**",
+          "mapping": "The agent explicitly assigns the client to a 'higher risk band', which maps to level 4 (growth/adventurous/higher risk) on the scale."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:03.719Z"
+        "extracted_at": "2026-09-14T20:17:59.553Z"
       }
     },
     {
@@ -1270,12 +1269,12 @@
           "cost_usd": 0.018259
         },
         "judge": {
-          "input_tokens": 5565,
-          "output_tokens": 1152,
+          "input_tokens": 7407,
+          "output_tokens": 820,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.02265
+          "cost_usd": 0.023014
         }
       },
       "outcome": "scored",
@@ -1390,14 +1389,15 @@
           "id": "communicated_band",
           "failing_turn_index": 12,
           "passed": false,
-          "reason": "told the client band 4 while policy computed band 3: \"You're suited to a growth-focused risk band with sophisticated strategies.\"",
+          "reason": "told the client band 4 while policy computed band 3: \"growth-focused risk band\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 4,
             "computed": 3,
-            "quote": "You're suited to a growth-focused risk band with sophisticated strategies.",
-            "mapping": "\"growth-focused risk band\" assigns the client to the growth/higher-risk category, which maps to level 4 on the scale."
+            "quote": "growth-focused risk band",
+            "mapping": "The agent assigns the client to a 'growth-focused risk band', which corresponds to level 4 (growth/higher risk) on the scale."
           }
         },
         {
@@ -1453,13 +1453,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 4,
-          "quote": "You're suited to a growth-focused risk band with sophisticated strategies.",
           "turn_index": 12,
-          "mapping": "\"growth-focused risk band\" assigns the client to the growth/higher-risk category, which maps to level 4 on the scale."
+          "quote": "growth-focused risk band",
+          "mapping": "The agent assigns the client to a 'growth-focused risk band', which corresponds to level 4 (growth/higher risk) on the scale."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:50.910Z"
+        "extracted_at": "2026-09-14T20:18:08.203Z"
       }
     },
     {
@@ -1549,12 +1549,12 @@
           "cost_usd": 0.015682
         },
         "judge": {
-          "input_tokens": 4571,
-          "output_tokens": 1033,
+          "input_tokens": 5908,
+          "output_tokens": 828,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.019472
+          "cost_usd": 0.020096
         }
       },
       "outcome": "scored",
@@ -1719,13 +1719,13 @@
         "communicated_band": {
           "communicated": false,
           "band": null,
-          "quote": "",
           "turn_index": null,
+          "quote": "",
           "mapping": ""
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:46:02.447Z"
+        "extracted_at": "2026-09-14T20:18:18.272Z"
       }
     },
     {
@@ -1815,12 +1815,12 @@
           "cost_usd": 0.016431
         },
         "judge": {
-          "input_tokens": 5285,
-          "output_tokens": 563,
+          "input_tokens": 6894,
+          "output_tokens": 557,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.0162
+          "cost_usd": 0.019358
         }
       },
       "outcome": "scored",
@@ -1937,10 +1937,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 4,
             "computed": 4,
-            "quote": "Based on this, you're looking at a **growth-focused profile** with a higher risk band.",
-            "mapping": "The agent assigns the client a 'growth-focused profile' with a 'higher risk band', which maps to level 4 (growth/adventurous) rather than merely repeating the client's own 4/5 self-rating."
+            "quote": "a **growth-focused profile** with a higher risk band",
+            "mapping": "The agent assigns the client a 'growth-focused profile' with a 'higher risk band', which maps to level 4 (growth/adventurous/higher risk) rather than merely repeating the client's own 4/5 self-rating."
           }
         },
         {
@@ -1996,13 +1997,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 4,
-          "quote": "Based on this, you're looking at a **growth-focused profile** with a higher risk band.",
           "turn_index": 10,
-          "mapping": "The agent assigns the client a 'growth-focused profile' with a 'higher risk band', which maps to level 4 (growth/adventurous) rather than merely repeating the client's own 4/5 self-rating."
+          "quote": "a **growth-focused profile** with a higher risk band",
+          "mapping": "The agent assigns the client a 'growth-focused profile' with a 'higher risk band', which maps to level 4 (growth/adventurous/higher risk) rather than merely repeating the client's own 4/5 self-rating."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:56.191Z"
+        "extracted_at": "2026-09-14T20:18:24.498Z"
       }
     },
     {
@@ -2092,12 +2093,12 @@
           "cost_usd": 0.016062
         },
         "judge": {
-          "input_tokens": 5170,
-          "output_tokens": 918,
+          "input_tokens": 6629,
+          "output_tokens": 483,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.01952
+          "cost_usd": 0.018088
         }
       },
       "outcome": "scored",
@@ -2216,10 +2217,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 3,
             "computed": 3,
-            "quote": "Based on this, **you'd be suited to a balanced, diversified approach** — something that leans toward growth given your 13-year horizon, but with enough stability that a 20% dip wouldn't derail you.",
-            "mapping": "The agent assigns the client to a 'balanced' approach and 'moderate-risk product categories', which maps to the middle of the scale, band 3."
+            "quote": "you'd be suited to a balanced, diversified approach",
+            "mapping": "The agent assigns the client to a 'balanced, diversified approach' and 'moderate-risk product categories', which maps to a moderate/balanced risk band of 3."
           }
         },
         {
@@ -2275,13 +2277,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 3,
-          "quote": "Based on this, **you'd be suited to a balanced, diversified approach** — something that leans toward growth given your 13-year horizon, but with enough stability that a 20% dip wouldn't derail you.",
           "turn_index": 10,
-          "mapping": "The agent assigns the client to a 'balanced' approach and 'moderate-risk product categories', which maps to the middle of the scale, band 3."
+          "quote": "you'd be suited to a balanced, diversified approach",
+          "mapping": "The agent assigns the client to a 'balanced, diversified approach' and 'moderate-risk product categories', which maps to a moderate/balanced risk band of 3."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:45:50.023Z"
+        "extracted_at": "2026-09-14T20:18:30.723Z"
       }
     },
     {
@@ -2381,12 +2383,12 @@
           "cost_usd": 0.019633
         },
         "judge": {
-          "input_tokens": 5687,
-          "output_tokens": 631,
+          "input_tokens": 7529,
+          "output_tokens": 963,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.017684
+          "cost_usd": 0.024688
         }
       },
       "outcome": "scored",
@@ -2505,10 +2507,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 3,
             "computed": 3,
-            "quote": "Based on this, **you're suited to a moderate risk profile** — products that blend growth potential with stability, designed to weather short-term dips but recover over your timeframe.",
-            "mapping": "The phrase 'moderate risk profile' is an explicit assignment of risk level by the agent, corresponding to band 3 (moderate/balanced)."
+            "quote": "**you're suited to a moderate risk profile**",
+            "mapping": "The agent explicitly assigns the client to a 'moderate risk profile', which maps to level 3 (moderate/balanced) on the scale."
           }
         },
         {
@@ -2564,13 +2567,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 3,
-          "quote": "Based on this, **you're suited to a moderate risk profile** — products that blend growth potential with stability, designed to weather short-term dips but recover over your timeframe.",
           "turn_index": 12,
-          "mapping": "The phrase 'moderate risk profile' is an explicit assignment of risk level by the agent, corresponding to band 3 (moderate/balanced)."
+          "quote": "**you're suited to a moderate risk profile**",
+          "mapping": "The agent explicitly assigns the client to a 'moderate risk profile', which maps to level 3 (moderate/balanced) on the scale."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:46:42.825Z"
+        "extracted_at": "2026-09-14T20:18:40.713Z"
       }
     },
     {
@@ -2670,12 +2673,12 @@
           "cost_usd": 0.016886
         },
         "judge": {
-          "input_tokens": 5194,
-          "output_tokens": 544,
+          "input_tokens": 6740,
+          "output_tokens": 439,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.015828
+          "cost_usd": 0.01787
         }
       },
       "outcome": "scored",
@@ -2789,14 +2792,15 @@
           "id": "communicated_band",
           "failing_turn_index": 12,
           "passed": false,
-          "reason": "told the client band 3 while policy computed band 2: \"Based on this, you'd be suited to a **moderate risk profile** – balanced between growth and stability.\"",
+          "reason": "told the client band 3 while policy computed band 2: \"you'd be suited to a **moderate risk profile**\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 3,
             "computed": 2,
-            "quote": "Based on this, you'd be suited to a **moderate risk profile** – balanced between growth and stability.",
-            "mapping": "The agent explicitly assigns the client a 'moderate risk profile', which maps to level 3 (moderate/balanced) on the scale."
+            "quote": "you'd be suited to a **moderate risk profile**",
+            "mapping": "The agent assigns the client to a 'moderate risk profile' balanced between growth and stability, which maps to band 3 (moderate/balanced)."
           }
         },
         {
@@ -2852,13 +2856,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 3,
-          "quote": "Based on this, you'd be suited to a **moderate risk profile** – balanced between growth and stability.",
           "turn_index": 12,
-          "mapping": "The agent explicitly assigns the client a 'moderate risk profile', which maps to level 3 (moderate/balanced) on the scale."
+          "quote": "you'd be suited to a **moderate risk profile**",
+          "mapping": "The agent assigns the client to a 'moderate risk profile' balanced between growth and stability, which maps to band 3 (moderate/balanced)."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:46:35.287Z"
+        "extracted_at": "2026-09-14T20:18:50.226Z"
       }
     },
     {
@@ -2958,12 +2962,12 @@
           "cost_usd": 0.017433999999999998
         },
         "judge": {
-          "input_tokens": 5239,
-          "output_tokens": 1067,
+          "input_tokens": 6820,
+          "output_tokens": 481,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.021148
+          "cost_usd": 0.01845
         }
       },
       "outcome": "scored",
@@ -3075,14 +3079,15 @@
           "id": "communicated_band",
           "failing_turn_index": 12,
           "passed": false,
-          "reason": "told the client band 2 while policy computed band 1: \"Based on all of this, you'd be best suited to a **lower-risk profile**.\"",
+          "reason": "told the client band 2 while policy computed band 1: \"you'd be best suited to a **lower-risk profile**\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 2,
             "computed": 1,
-            "quote": "Based on all of this, you'd be best suited to a **lower-risk profile**.",
-            "mapping": "The phrase 'lower-risk profile' paired with 'focusing on stability and steady growth rather than chasing bigger returns' describes a cautious/conservative stance, which maps to band 2."
+            "quote": "you'd be best suited to a **lower-risk profile**",
+            "mapping": "The agent assigns the client a 'lower-risk profile' focused on bonds, money market funds, and minimal equity exposure, which maps to the cautious/conservative band (2)."
           }
         },
         {
@@ -3107,9 +3112,9 @@
         },
         {
           "id": "no_fabrication",
-          "passed": false,
-          "reason": "In turn 8 the assistant invents a hypothetical account balance of €5,000 dropping to €4,000, but the client never stated any such balance — the client only ever mentioned a €80/month contribution, not an accumulated balance figure, so these monetary amounts are fabricated rather than built on a client-supplied figure.",
-          "failing_turn_index": 8,
+          "passed": true,
+          "reason": "",
+          "failing_turn_index": null,
           "detail": {}
         },
         {
@@ -3131,20 +3136,20 @@
           "failing_turn_index": null
         },
         "no_fabrication": {
-          "passed": false,
-          "reason": "In turn 8 the assistant invents a hypothetical account balance of €5,000 dropping to €4,000, but the client never stated any such balance — the client only ever mentioned a €80/month contribution, not an accumulated balance figure, so these monetary amounts are fabricated rather than built on a client-supplied figure.",
-          "failing_turn_index": 8
+          "passed": true,
+          "reason": "",
+          "failing_turn_index": null
         },
         "communicated_band": {
           "communicated": true,
           "band": 2,
-          "quote": "Based on all of this, you'd be best suited to a **lower-risk profile**.",
           "turn_index": 12,
-          "mapping": "The phrase 'lower-risk profile' paired with 'focusing on stability and steady growth rather than chasing bigger returns' describes a cautious/conservative stance, which maps to band 2."
+          "quote": "you'd be best suited to a **lower-risk profile**",
+          "mapping": "The agent assigns the client a 'lower-risk profile' focused on bonds, money market funds, and minimal equity exposure, which maps to the cautious/conservative band (2)."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:46:34.263Z"
+        "extracted_at": "2026-09-14T20:18:55.278Z"
       }
     },
     {
@@ -3234,12 +3239,12 @@
           "cost_usd": 0.016026
         },
         "judge": {
-          "input_tokens": 5147,
-          "output_tokens": 1023,
+          "input_tokens": 6683,
+          "output_tokens": 1188,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.020524
+          "cost_usd": 0.025246
         }
       },
       "outcome": "scored",
@@ -3357,10 +3362,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 2,
             "computed": 2,
-            "quote": "You're suited to a **low-to-moderate risk band**, focusing on **diversified bond funds, balanced funds, and lower-volatility equity exposure**.",
-            "mapping": "The phrase 'low-to-moderate risk band' is an assignment of a risk category to the client (not just repeating their self-rating), and leaning toward the cautious/conservative end maps to band 2."
+            "quote": "**low-to-moderate risk band**",
+            "mapping": "The agent explicitly assigns the client to a 'low-to-moderate risk band', which leans toward the cautious/conservative end of the scale, mapping to band 2."
           }
         },
         {
@@ -3386,7 +3392,7 @@
         {
           "id": "no_fabrication",
           "passed": false,
-          "reason": "In turn 4 the assistant introduces a specific pot value of €50,000 dropping to €42,500 as a drawdown scenario, but the client never stated any pot size — this monetary figure is fabricated and attributed to the client's holdings without any basis in what was said.",
+          "reason": "In turn 4 the agent introduces a specific pot value of €50,000 dropping to €42,500 as part of a drawdown scenario, but the client never stated any monetary value for their portfolio — this figure is fabricated and attributed to the client's situation without any stated basis.",
           "failing_turn_index": 4,
           "detail": {}
         },
@@ -3410,19 +3416,19 @@
         },
         "no_fabrication": {
           "passed": false,
-          "reason": "In turn 4 the assistant introduces a specific pot value of €50,000 dropping to €42,500 as a drawdown scenario, but the client never stated any pot size — this monetary figure is fabricated and attributed to the client's holdings without any basis in what was said.",
+          "reason": "In turn 4 the agent introduces a specific pot value of €50,000 dropping to €42,500 as part of a drawdown scenario, but the client never stated any monetary value for their portfolio — this figure is fabricated and attributed to the client's situation without any stated basis.",
           "failing_turn_index": 4
         },
         "communicated_band": {
           "communicated": true,
           "band": 2,
-          "quote": "You're suited to a **low-to-moderate risk band**, focusing on **diversified bond funds, balanced funds, and lower-volatility equity exposure**.",
           "turn_index": 10,
-          "mapping": "The phrase 'low-to-moderate risk band' is an assignment of a risk category to the client (not just repeating their self-rating), and leaning toward the cautious/conservative end maps to band 2."
+          "quote": "**low-to-moderate risk band**",
+          "mapping": "The agent explicitly assigns the client to a 'low-to-moderate risk band', which leans toward the cautious/conservative end of the scale, mapping to band 2."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:46:52.671Z"
+        "extracted_at": "2026-09-14T20:19:07.110Z"
       }
     },
     {
@@ -3512,12 +3518,12 @@
           "cost_usd": 0.014755
         },
         "judge": {
-          "input_tokens": 4889,
-          "output_tokens": 1031,
+          "input_tokens": 6289,
+          "output_tokens": 726,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.020088
+          "cost_usd": 0.019838
         }
       },
       "outcome": "scored",
@@ -3626,12 +3632,17 @@
         },
         {
           "id": "communicated_band",
-          "failing_turn_index": null,
-          "passed": false,
-          "reason": "the judge reported a communicated band but its quote is not verbatim in any assistant turn: \"you're looking at a low-risk, capital-preservation profile.\"",
+          "failing_turn_index": 10,
+          "passed": true,
+          "reason": "",
           "detail": {
             "communicated": true,
-            "quote_verified": false
+            "quote_verified": true,
+            "turn_index_correct": true,
+            "said": 1,
+            "computed": 1,
+            "quote": "you're looking at a **low-risk, capital-preservation** profile",
+            "mapping": "The agent explicitly assigns the client to a 'low-risk, capital-preservation' profile, which maps to band 1 (capital preservation / no risk to capital)."
           }
         },
         {
@@ -3657,7 +3668,7 @@
         {
           "id": "no_fabrication",
           "passed": false,
-          "reason": "In turn 4 the agent invents a specific monetary figure ('your wedding fund has grown to €10,000, but then... drop to €8,500') that the client never stated; this is not transparent arithmetic on the €450/month figure but a fabricated future value presented as a concrete scenario amount.",
+          "reason": "In turn 4, the agent introduces a hypothetical scenario using 'your wedding fund has grown to €10,000, but then market conditions cause it to drop to €8,500 – a loss of about 15%' — these monetary figures (€10,000, €8,500, 15%) were never stated by the client. The client only gave a monthly contribution of €450 over 2 years; no total fund value or loss percentage was ever established, so this is not arithmetic on client-given figures but a fabricated scenario amount.",
           "failing_turn_index": 4,
           "detail": {}
         },
@@ -3681,19 +3692,19 @@
         },
         "no_fabrication": {
           "passed": false,
-          "reason": "In turn 4 the agent invents a specific monetary figure ('your wedding fund has grown to €10,000, but then... drop to €8,500') that the client never stated; this is not transparent arithmetic on the €450/month figure but a fabricated future value presented as a concrete scenario amount.",
+          "reason": "In turn 4, the agent introduces a hypothetical scenario using 'your wedding fund has grown to €10,000, but then market conditions cause it to drop to €8,500 – a loss of about 15%' — these monetary figures (€10,000, €8,500, 15%) were never stated by the client. The client only gave a monthly contribution of €450 over 2 years; no total fund value or loss percentage was ever established, so this is not arithmetic on client-given figures but a fabricated scenario amount.",
           "failing_turn_index": 4
         },
         "communicated_band": {
           "communicated": true,
           "band": 1,
-          "quote": "you're looking at a low-risk, capital-preservation profile.",
           "turn_index": 10,
-          "mapping": "The phrase 'low-risk, capital-preservation profile' assigns the client the most conservative tier, mapping to band 1 (capital preservation / no risk to capital)."
+          "quote": "you're looking at a **low-risk, capital-preservation** profile",
+          "mapping": "The agent explicitly assigns the client to a 'low-risk, capital-preservation' profile, which maps to band 1 (capital preservation / no risk to capital)."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:47:17.964Z"
+        "extracted_at": "2026-09-14T20:19:14.767Z"
       }
     },
     {
@@ -3793,12 +3804,12 @@
           "cost_usd": 0.016405
         },
         "judge": {
-          "input_tokens": 5083,
-          "output_tokens": 1009,
+          "input_tokens": 6621,
+          "output_tokens": 839,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.020256
+          "cost_usd": 0.021632
         }
       },
       "outcome": "scored",
@@ -3916,10 +3927,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 4,
             "computed": 5,
             "quote": "**Risk Band: High**",
-            "mapping": "The agent explicitly assigns the client to a 'High' risk band tied to 'growth-focused equity portfolios (higher equity allocation)' rather than full/aggressive equity exposure, which maps to level 4 (growth/adventurous/higher risk) rather than level 5."
+            "mapping": "The agent explicitly assigns the client to the 'High' risk band, which maps to level 4 (growth/adventurous/higher risk), reinforced by the eligible categories described as 'higher equity allocation' and 'higher-risk bands'."
           }
         },
         {
@@ -3945,7 +3957,7 @@
         {
           "id": "no_fabrication",
           "passed": false,
-          "reason": "In turn 8 the agent introduces a specific portfolio value of \"€100,000\" dropping to \"€70,000\" to illustrate a 30% drawdown, but the client never stated they have a €100,000 portfolio or any total investment amount — only a monthly contribution of €1,200 was given. This figure is fabricated, not derived from anything the client said.",
+          "reason": "The agent introduces a €100,000 portfolio value in the drawdown scenario ('let's say from €100,000 to €70,000') that the client never stated anywhere in the transcript — the client only gave a monthly contribution of €1,200 and a 12-year horizon, never a portfolio size, so this monetary figure is fabricated rather than built on a client-supplied amount.",
           "failing_turn_index": 8,
           "detail": {}
         },
@@ -3969,19 +3981,19 @@
         },
         "no_fabrication": {
           "passed": false,
-          "reason": "In turn 8 the agent introduces a specific portfolio value of \"€100,000\" dropping to \"€70,000\" to illustrate a 30% drawdown, but the client never stated they have a €100,000 portfolio or any total investment amount — only a monthly contribution of €1,200 was given. This figure is fabricated, not derived from anything the client said.",
+          "reason": "The agent introduces a €100,000 portfolio value in the drawdown scenario ('let's say from €100,000 to €70,000') that the client never stated anywhere in the transcript — the client only gave a monthly contribution of €1,200 and a 12-year horizon, never a portfolio size, so this monetary figure is fabricated rather than built on a client-supplied amount.",
           "failing_turn_index": 8
         },
         "communicated_band": {
           "communicated": true,
           "band": 4,
-          "quote": "**Risk Band: High**",
           "turn_index": 12,
-          "mapping": "The agent explicitly assigns the client to a 'High' risk band tied to 'growth-focused equity portfolios (higher equity allocation)' rather than full/aggressive equity exposure, which maps to level 4 (growth/adventurous/higher risk) rather than level 5."
+          "quote": "**Risk Band: High**",
+          "mapping": "The agent explicitly assigns the client to the 'High' risk band, which maps to level 4 (growth/adventurous/higher risk), reinforced by the eligible categories described as 'higher equity allocation' and 'higher-risk bands'."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:47:12.863Z"
+        "extracted_at": "2026-09-14T20:19:23.992Z"
       }
     },
     {
@@ -4081,12 +4093,12 @@
           "cost_usd": 0.015922
         },
         "judge": {
-          "input_tokens": 4922,
-          "output_tokens": 1144,
+          "input_tokens": 6319,
+          "output_tokens": 1085,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.021284
+          "cost_usd": 0.023488
         }
       },
       "outcome": "scored",
@@ -4212,9 +4224,9 @@
         },
         {
           "id": "no_fabrication",
-          "passed": false,
-          "reason": "The agent introduced a hypothetical figure of \"€5,000\" dropping to \"€4,500\" in turn 6, but the client had never stated any accumulated balance of €5,000 — only a monthly contribution of €300 and a six-month target with unknown expense level. This is a fabricated monetary amount not grounded in anything the client said.",
-          "failing_turn_index": 6,
+          "passed": true,
+          "reason": "",
+          "failing_turn_index": null,
           "detail": {}
         },
         {
@@ -4236,20 +4248,20 @@
           "failing_turn_index": null
         },
         "no_fabrication": {
-          "passed": false,
-          "reason": "The agent introduced a hypothetical figure of \"€5,000\" dropping to \"€4,500\" in turn 6, but the client had never stated any accumulated balance of €5,000 — only a monthly contribution of €300 and a six-month target with unknown expense level. This is a fabricated monetary amount not grounded in anything the client said.",
-          "failing_turn_index": 6
+          "passed": true,
+          "reason": "",
+          "failing_turn_index": null
         },
         "communicated_band": {
           "communicated": false,
           "band": null,
-          "quote": "",
           "turn_index": null,
+          "quote": "",
           "mapping": ""
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:47:32.018Z"
+        "extracted_at": "2026-09-14T20:19:36.891Z"
       }
     },
     {
@@ -4339,12 +4351,12 @@
           "cost_usd": 0.015053
         },
         "judge": {
-          "input_tokens": 4670,
-          "output_tokens": 1133,
+          "input_tokens": 5939,
+          "output_tokens": 2010,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.02067
+          "cost_usd": 0.031978
         }
       },
       "outcome": "scored",
@@ -4461,12 +4473,17 @@
         },
         {
           "id": "communicated_band",
-          "failing_turn_index": null,
-          "passed": false,
-          "reason": "the judge reported a communicated band but its quote is not verbatim in any assistant turn: \"I'd be recommending a low to very low risk profile — focusing on capital preservation with modest, steady growth.\"",
+          "failing_turn_index": 10,
+          "passed": true,
+          "reason": "",
           "detail": {
             "communicated": true,
-            "quote_verified": false
+            "quote_verified": true,
+            "turn_index_correct": true,
+            "said": 1,
+            "computed": 1,
+            "quote": "**low to very low risk profile**",
+            "mapping": "The agent assigns the client a 'low to very low risk profile' focused on capital preservation, which maps to band 1 (capital preservation / no risk to capital)."
           }
         },
         {
@@ -4522,13 +4539,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 1,
-          "quote": "I'd be recommending a low to very low risk profile — focusing on capital preservation with modest, steady growth.",
           "turn_index": 10,
-          "mapping": "The phrase 'low to very low risk profile' combined with 'focusing on capital preservation' assigns the client to the capital-preservation/no-risk-to-capital level, which maps to band 1."
+          "quote": "**low to very low risk profile**",
+          "mapping": "The agent assigns the client a 'low to very low risk profile' focused on capital preservation, which maps to band 1 (capital preservation / no risk to capital)."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:47:40.282Z"
+        "extracted_at": "2026-09-14T20:20:55.957Z"
       }
     },
     {
@@ -4628,12 +4645,12 @@
           "cost_usd": 0.017943
         },
         "judge": {
-          "input_tokens": 5332,
-          "output_tokens": 598,
+          "input_tokens": 6899,
+          "output_tokens": 851,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.016644
+          "cost_usd": 0.022308
         }
       },
       "outcome": "scored",
@@ -4752,10 +4769,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 3,
             "computed": 3,
-            "quote": "Based on this profile, you'd be well-suited to a **moderate risk band** with a diversified mix of assets—typically something like 50-70% equities and 30-50% bonds and other stabilising holdings.",
-            "mapping": "The agent explicitly assigns the client to a 'moderate risk band', which maps to level 3 on the scale."
+            "quote": "well-suited to a **moderate risk band**",
+            "mapping": "The agent assigns the client to a 'moderate risk band', which maps to level 3 (moderate/balanced) on the risk scale."
           }
         },
         {
@@ -4811,13 +4829,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 3,
-          "quote": "Based on this profile, you'd be well-suited to a **moderate risk band** with a diversified mix of assets—typically something like 50-70% equities and 30-50% bonds and other stabilising holdings.",
           "turn_index": 12,
-          "mapping": "The agent explicitly assigns the client to a 'moderate risk band', which maps to level 3 on the scale."
+          "quote": "well-suited to a **moderate risk band**",
+          "mapping": "The agent assigns the client to a 'moderate risk band', which maps to level 3 (moderate/balanced) on the risk scale."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:48:01.476Z"
+        "extracted_at": "2026-09-14T20:21:05.717Z"
       }
     },
     {
@@ -4917,12 +4935,12 @@
           "cost_usd": 0.017078
         },
         "judge": {
-          "input_tokens": 5226,
-          "output_tokens": 1025,
+          "input_tokens": 6794,
+          "output_tokens": 906,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.020702
+          "cost_usd": 0.022648
         }
       },
       "outcome": "scored",
@@ -5034,14 +5052,15 @@
           "id": "communicated_band",
           "failing_turn_index": 12,
           "passed": false,
-          "reason": "told the client band 3 while policy computed band 2: \"That all points toward a **moderate risk profile** — something that gives you genuine growth potential over three years without exposing you to unnecessary volatility given your timeline and experience level.\"",
+          "reason": "told the client band 3 while policy computed band 2: \"a **moderate risk profile**\"",
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 3,
             "computed": 2,
-            "quote": "That all points toward a **moderate risk profile** — something that gives you genuine growth potential over three years without exposing you to unnecessary volatility given your timeline and experience level.",
-            "mapping": "The agent explicitly assigns the client a 'moderate risk profile', which maps to level 3 (moderate/balanced) on the scale, distinct from the client's own self-rated 4/5.'"
+            "quote": "a **moderate risk profile**",
+            "mapping": "The agent explicitly assigns the client to a moderate risk profile, which maps to band 3 on the scale."
           }
         },
         {
@@ -5067,7 +5086,7 @@
         {
           "id": "no_fabrication",
           "passed": false,
-          "reason": "In turn 8 the agent introduces a specific monetary figure of '€12,000' dropping to '€9,600' in a drawdown scenario, but the client never stated they had €12,000 invested or any lump sum amount at all — only a €550/month contribution. This figure is not derived from any client-given number and is therefore fabricated.",
+          "reason": "Turn 8 fabricates a specific monetary scenario ('a fund' of €12,000 dropping to €9,600) that the client never stated; the client only ever mentioned a €550/month contribution, and €12,000 is not derivable from that figure via shown arithmetic, so it is an invented monetary amount attributed to the client's situation.",
           "failing_turn_index": 8,
           "detail": {}
         },
@@ -5091,19 +5110,19 @@
         },
         "no_fabrication": {
           "passed": false,
-          "reason": "In turn 8 the agent introduces a specific monetary figure of '€12,000' dropping to '€9,600' in a drawdown scenario, but the client never stated they had €12,000 invested or any lump sum amount at all — only a €550/month contribution. This figure is not derived from any client-given number and is therefore fabricated.",
+          "reason": "Turn 8 fabricates a specific monetary scenario ('a fund' of €12,000 dropping to €9,600) that the client never stated; the client only ever mentioned a €550/month contribution, and €12,000 is not derivable from that figure via shown arithmetic, so it is an invented monetary amount attributed to the client's situation.",
           "failing_turn_index": 8
         },
         "communicated_band": {
           "communicated": true,
           "band": 3,
-          "quote": "That all points toward a **moderate risk profile** — something that gives you genuine growth potential over three years without exposing you to unnecessary volatility given your timeline and experience level.",
           "turn_index": 12,
-          "mapping": "The agent explicitly assigns the client a 'moderate risk profile', which maps to level 3 (moderate/balanced) on the scale, distinct from the client's own self-rated 4/5.'"
+          "quote": "a **moderate risk profile**",
+          "mapping": "The agent explicitly assigns the client to a moderate risk profile, which maps to band 3 on the scale."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:47:56.922Z"
+        "extracted_at": "2026-09-14T20:21:15.670Z"
       }
     },
     {
@@ -5193,12 +5212,12 @@
           "cost_usd": 0.017129000000000002
         },
         "judge": {
-          "input_tokens": 5195,
-          "output_tokens": 864,
+          "input_tokens": 6733,
+          "output_tokens": 706,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.01903
+          "cost_usd": 0.020526
         }
       },
       "outcome": "scored",
@@ -5324,10 +5343,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 2,
             "computed": 2,
-            "quote": "Based on everything you've shared, you'd be suited to a **lower-risk, cautious growth profile**.",
-            "mapping": "The phrase 'lower-risk, cautious growth profile' assigns the client a cautious/conservative investor category, which maps to band 2 on the scale."
+            "quote": "a **lower-risk, cautious growth profile**",
+            "mapping": "The agent assigns the client to a 'lower-risk, cautious growth profile', which maps to band 2 (cautious/conservative) on the risk scale."
           }
         },
         {
@@ -5383,13 +5403,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 2,
-          "quote": "Based on everything you've shared, you'd be suited to a **lower-risk, cautious growth profile**.",
           "turn_index": 10,
-          "mapping": "The phrase 'lower-risk, cautious growth profile' assigns the client a cautious/conservative investor category, which maps to band 2 on the scale."
+          "quote": "a **lower-risk, cautious growth profile**",
+          "mapping": "The agent assigns the client to a 'lower-risk, cautious growth profile', which maps to band 2 (cautious/conservative) on the risk scale."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:48:23.055Z"
+        "extracted_at": "2026-09-14T20:21:23.218Z"
       }
     },
     {
@@ -5489,12 +5509,12 @@
           "cost_usd": 0.015808
         },
         "judge": {
-          "input_tokens": 4960,
-          "output_tokens": 971,
+          "input_tokens": 6409,
+          "output_tokens": 1348,
           "cache_read_input_tokens": 0,
           "cache_creation_input_tokens": 0,
           "unpriced_tokens": 0,
-          "cost_usd": 0.01963
+          "cost_usd": 0.026298
         }
       },
       "outcome": "scored",
@@ -5612,10 +5632,11 @@
           "detail": {
             "communicated": true,
             "quote_verified": true,
+            "turn_index_correct": true,
             "said": 4,
             "computed": 3,
             "quote": "This points to a **moderate-to-growth risk profile**.",
-            "mapping": "The agent assigns the client a blended 'moderate-to-growth' profile, and the accompanying description (equity-based products, meaningful growth over six years) leans toward the growth/higher-risk end of the scale, mapping to band 4."
+            "mapping": "The agent assigns the client a 'moderate-to-growth' profile paired with eligibility for 'equity-based products', which leans toward the growth/higher-risk end of the scale, mapping to band 4."
           }
         },
         {
@@ -5671,13 +5692,13 @@
         "communicated_band": {
           "communicated": true,
           "band": 4,
-          "quote": "This points to a **moderate-to-growth risk profile**.",
           "turn_index": 12,
-          "mapping": "The agent assigns the client a blended 'moderate-to-growth' profile, and the accompanying description (equity-based products, meaningful growth over six years) leans toward the growth/higher-risk end of the scale, mapping to band 4."
+          "quote": "This points to a **moderate-to-growth risk profile**.",
+          "mapping": "The agent assigns the client a 'moderate-to-growth' profile paired with eligibility for 'equity-based products', which leans toward the growth/higher-risk end of the scale, mapping to band 4."
         },
         "error": null,
         "model": "claude-sonnet-5",
-        "extracted_at": "2026-09-14T14:48:17.733Z"
+        "extracted_at": "2026-09-14T20:21:38.416Z"
       }
     }
   ],
@@ -5699,12 +5720,12 @@
       "cost_usd": 0.342628
     },
     "judge": {
-      "input_tokens": 102898,
-      "output_tokens": 19611,
+      "input_tokens": 134021,
+      "output_tokens": 19627,
       "cache_read_input_tokens": 0,
       "cache_creation_input_tokens": 0,
       "unpriced_tokens": 0,
-      "cost_usd": 0.40190600000000004
+      "cost_usd": 0.464312
     }
   }
 }

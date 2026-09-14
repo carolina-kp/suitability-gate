@@ -50,14 +50,42 @@ export function normalise(s: string): string {
     .trim();
 }
 
-/** The assistant turn a quote actually appears in, or null. */
-function findInAssistantTurns(transcript: Turn[], quote: string): number | null {
+interface SpanCheck {
+  /** The assistant turn the span was actually found in, or null. */
+  found_in: number | null;
+  /** True when it was found in the turn the judge named. */
+  index_correct: boolean;
+}
+
+/**
+ * Verify a copied span against the turn it was said to come from.
+ *
+ * The named turn is checked first, because that is what the judge was asked to
+ * copy from. A span that turns up in a different assistant turn is accepted
+ * with the index corrected — an off-by-one on the label is a weaker defect than
+ * an invented sentence, and reporting it is more useful than failing on it. A
+ * span found in no assistant turn at all is not evidence of anything, and the
+ * caller fails closed.
+ */
+function verifySpan(
+  transcript: Turn[],
+  quote: string,
+  claimedTurn: number | null,
+): SpanCheck {
   const q = normalise(quote);
-  if (q === "") return null;
-  const hit = transcript
-    .filter((t) => t.role === "agent")
-    .find((t) => normalise(t.text).includes(q));
-  return hit ? hit.index : null;
+  if (q === "") return { found_in: null, index_correct: false };
+
+  const assistant = transcript.filter((t) => t.role === "agent");
+  const claimed = assistant.find((t) => t.index === claimedTurn);
+  if (claimed && normalise(claimed.text).includes(q)) {
+    return { found_in: claimed.index, index_correct: true };
+  }
+
+  const elsewhere = assistant.find((t) => normalise(t.text).includes(q));
+  return {
+    found_in: elsewhere ? elsewhere.index : null,
+    index_correct: false,
+  };
 }
 
 // --- Criterion: risk band (deterministic) -----------------------------------
@@ -187,14 +215,15 @@ function scoreCommunicatedBand(
   }
 
   // An extraction that says "a band was communicated" and then cannot produce
-  // a findable sentence is not evidence of anything. Fail closed rather than
-  // score a run on a quote that may not exist.
-  const turn = findInAssistantTurns(transcript, c.quote);
+  // a findable span is not evidence of anything. Fail closed rather than score
+  // a run on a sentence that may never have been said.
+  const span = verifySpan(transcript, c.quote, c.turn_index);
+  const turn = span.found_in;
   if (turn === null) {
     return {
       ...base,
       passed: false,
-      reason: `the judge reported a communicated band but its quote is not verbatim in any assistant turn: "${c.quote.slice(0, 120)}"`,
+      reason: `the judge reported a communicated band but its span is not an exact substring of any assistant turn: "${c.quote.slice(0, 120)}"`,
       detail: { communicated: true, quote_verified: false },
     };
   }
@@ -211,6 +240,8 @@ function scoreCommunicatedBand(
   const detail = {
     communicated: true,
     quote_verified: true,
+    // A span found in a turn other than the one named is reported, not failed.
+    turn_index_correct: span.index_correct,
     said: c.band,
     computed: p.risk_band ?? "none",
     quote: c.quote,

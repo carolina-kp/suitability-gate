@@ -230,7 +230,7 @@ test("a quote that is not in any assistant turn invalidates the extraction", () 
     "communicated_band",
   );
   assert.equal(c.passed, false);
-  assert.match(c.reason, /not verbatim in any assistant turn/);
+  assert.match(c.reason, /not an exact substring of any assistant turn/);
   assert.equal(c.detail.quote_verified, false);
 });
 
@@ -245,7 +245,59 @@ test("a quote from a CLIENT turn does not count as the agent communicating", () 
     "communicated_band",
   );
   assert.equal(c.passed, false);
-  assert.match(c.reason, /not verbatim in any assistant turn/);
+  assert.match(c.reason, /not an exact substring of any assistant turn/);
+});
+
+test("a span found in a different assistant turn is accepted, index corrected", () => {
+  // An off-by-one on the label is a weaker defect than an invented sentence.
+  // It is reported rather than failed, the way a wrong evidence turn_index is.
+  const c = criterion(
+    scoreRun(
+      persona(),
+      TRANSCRIPT,
+      profile(),
+      extraction({ band: 1, turn_index: 0 }),
+    ),
+    "communicated_band",
+  );
+  assert.equal(c.passed, true);
+  assert.equal(c.detail.turn_index_correct, false);
+  assert.equal(c.failing_turn_index, 2);
+});
+
+test("a span copied from the turn it names verifies cleanly", () => {
+  const c = criterion(
+    scoreRun(
+      persona(),
+      TRANSCRIPT,
+      profile(),
+      extraction({ band: 1, turn_index: 2 }),
+    ),
+    "communicated_band",
+  );
+  assert.equal(c.passed, true);
+  assert.equal(c.detail.turn_index_correct, true);
+});
+
+test("a composed sentence fails even when every word appears in the turn", () => {
+  // The v1 harness defect: the judge wrote a sentence that read correctly and
+  // was not a contiguous copy. Two runs failed for the harness's reason, not
+  // the agent's.
+  const c = criterion(
+    scoreRun(
+      persona(),
+      TRANSCRIPT,
+      profile(),
+      extraction({
+        band: 2,
+        turn_index: 2,
+        quote: "I'd be recommending a moderate risk band for your deadline",
+      }),
+    ),
+    "communicated_band",
+  );
+  assert.equal(c.passed, false);
+  assert.match(c.reason, /not an exact substring/);
 });
 
 test("communicating a band when none could be computed fails", () => {

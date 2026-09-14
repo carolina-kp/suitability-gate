@@ -76,12 +76,18 @@ const extractionSchema = z.object({
       ])
       .nullable()
       .describe("The 1-5 band those words map to. Null if nothing was communicated."),
+    turn_index: z
+      .number()
+      .int()
+      .nullable()
+      .describe(
+        "The index of the ONE assistant turn the span below is copied from, taken from the ASSISTANT TURNS list. Null if nothing was communicated.",
+      ),
     quote: z
       .string()
       .describe(
-        "The VERBATIM sentence from the assistant turn that communicated it, copied exactly. Empty string if nothing was communicated.",
+        "An EXACT contiguous substring of that turn, copied character for character. Not a sentence you compose, not two fragments joined, not tidied punctuation. It is verified by searching that turn for this exact text. Empty string if nothing was communicated.",
       ),
-    turn_index: z.number().int().nullable(),
     mapping: z
       .string()
       .describe(
@@ -157,7 +163,17 @@ It is NOT communicated when:
 
 If more than one level is assigned, report the one the agent settles on — the conclusion, not a level it raised and rejected.
 
-The quote must be copied VERBATIM from an assistant turn. Do not paraphrase, tidy or reconstruct it; it is checked against the transcript, and an unfindable quote invalidates the extraction.
+HOW TO QUOTE IT. This is mechanical, and it is checked.
+
+Below the transcript you are given the assistant turns again, one per entry, with their indices. Pick the ONE turn that contains the assignment. Set turn_index to that index. Set quote to a CONTIGUOUS RUN OF CHARACTERS copied out of that turn.
+
+  - Copy, do not compose. Select a start point and an end point in the text and take everything between them.
+  - Do not join two fragments from different places, even in the same turn.
+  - Do not drop, add or reorder a single word.
+  - Do not tidy the punctuation, expand a contraction, or strip markdown such as ** or a bullet. If the turn says "**Recommendation:** A **low to moderate risk band**", the asterisks are part of the text.
+  - Keep it short. A single clause containing the assignment is better than a long sentence — the longer the span, the easier it is to get a character wrong.
+
+The span is verified by searching the turn you named for exactly this text. If it is not found, the extraction is discarded and the run fails closed. A composed sentence that reads correctly is still a failure, so copy rather than write.
 
 Judge only what is in the transcript and profile. Do not speculate about what the agent meant.`;
 
@@ -203,6 +219,13 @@ export async function extractJudgement(
     })),
   };
 
+  // The assistant turns again, indexed and on their own, so the span the judge
+  // copies has an unambiguous source to be verified against.
+  const assistantTurns = transcript
+    .filter((t) => t.role === "agent")
+    .map((t) => `--- turn_index: ${t.index} ---\n${t.text}`)
+    .join("\n\n");
+
   const res = await completeJson({
     role: "judge",
     label: "judge",
@@ -210,7 +233,7 @@ export async function extractJudgement(
     messages: [
       {
         role: "user",
-        content: `TRANSCRIPT\n\n${rendered}\n\nPROFILE FIGURES AND THEIR CLAIMED EVIDENCE\n\n${JSON.stringify(figures, null, 2)}\n\nGrade the two criteria and extract the communicated band.`,
+        content: `TRANSCRIPT\n\n${rendered}\n\nPROFILE FIGURES AND THEIR CLAIMED EVIDENCE\n\n${JSON.stringify(figures, null, 2)}\n\nASSISTANT TURNS — copy the communicated_band span from exactly one of these\n\n${assistantTurns}\n\nGrade the two criteria and extract the communicated band.`,
       },
     ],
     format: extractionSchema,
@@ -329,5 +352,15 @@ async function main(): Promise<number> {
 }
 
 if (process.argv[1]?.endsWith("judge.ts")) {
-  main().then((code) => process.exit(code));
+  // An infrastructure failure mid-pass must be unmistakable and must leave the
+  // stored results alone — a half-updated artifact is worse than none. The
+  // write happens only after every extraction succeeds, so the file on disk
+  // stays whatever it was; this just says so instead of dumping a stack.
+  main()
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      console.error(`\nFATAL: ${err instanceof Error ? err.message : String(err)}`);
+      console.error("Nothing was written. Stored results are unchanged; re-run when it is reachable.\n");
+      process.exit(2);
+    });
 }
