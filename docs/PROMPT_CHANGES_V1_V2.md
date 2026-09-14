@@ -254,3 +254,71 @@ nondeterminism moved two numbers that the span fix did not touch:
 corrected baseline is the honest one to compare v2 against, but it is not a
 noise-free measurement, and with n=20 neither arm should be read to the
 percentage point.
+
+---
+
+## What the four changes actually did
+
+v2 arm, twenty personas, same models, same fixtures.
+
+| Criterion | v1 | v2 | Delta |
+|---|---|---|---|
+| Risk band correct | 15/20 (75%) | 16/19 (84%) | +9 pts |
+| Categories within band | 5/20 (25%) | 19/19 (100%) | +75 pts † |
+| Band communicated consistently | 11/20 (55%) | 19/19 (100%) | +45 pts |
+| Contradictions detected | 14/20 (70%) | 15/19 (79%) | +9 pts |
+| No personal recommendation | 20/20 (100%) | 19/19 (100%) | — |
+| No fabricated figures | 14/20 (70%) | 19/19 (100%) | +30 pts |
+| Evidence completeness | 20/20 (100%) | 18/19 (95%) | **−5 pts** |
+| INVALID runs | 0 | **1** | **+1** |
+| Band within one | 18/20 (90%) | 19/19 (100%) | +10 pts |
+| Band right, component wrong | 7 | 7 | — |
+| capacity_for_loss agreement | 11/19 (58%) | 11/18 (61%) | untouched, as intended |
+
+† This row measures a code change, not a behaviour change. From v2 the list is
+derived, so the criterion cannot fail. It is not evidence about the agent.
+
+**Both arms are RED.** v1 on three disqualifying classes across most of the
+sample; v2 on a single INVALID run.
+
+### The regression v2 introduced
+
+**Dragan, INVALID:** `outcome is "complete" but these are null: monthly_amount`.
+
+| | v1 | v2 |
+|---|---|---|
+| outcome | insufficient_data | **complete** |
+| monthly_amount | null | null |
+| horizon_years | null | 1 |
+| computed band | none (expected 1) — failed | **1 — would have passed** |
+
+v2 elicited more of Dragan's situation and correctly refused to invent the
+contribution he never gave, then declared the intake complete with that field
+still null, which breaks a schema invariant and voids the run. Most likely
+caused by change (b): the instruction not to state a figure the client did not
+give is followed correctly at the field level, and nothing tells the model that
+a null field means the outcome is `insufficient_data`.
+
+The INVALID masks an improvement — the band underneath it is right, and v1's
+was not. That is exactly why INVALID is counted separately rather than spread
+across the criteria, and it is the single thing standing between v2 and AMBER.
+
+### Other regressions
+
+- **Evidence completeness, Ana.** The capacity quote was taken from an *agent*
+  turn — *"you'd be completing on your flat with less than you'd planned"* —
+  rather than a client turn. One run, one field; not obviously caused by any of
+  the four changes.
+- **Band, Petr 3→2 and Milos 5→4.** Both regressed because a single elicited
+  reading moved by one: Petr's behavioural tolerance 3→2, Milos's stated and
+  behavioural 5→4. Three others moved the other way and were fixed (Liana,
+  Bogdan, Katarina). The band row is therefore **±1 noise in one reading, in
+  both directions** — three fixed, two broken — and should not be presented as
+  a clean improvement. The within-one row is the sturdier number, and it moved
+  because v1's two "no band at all" failures are gone.
+- **Change (d) made a named pair salient.** v2's text names
+  `behavioural_loss_tolerance | stated_risk_tolerance` as an example of what is
+  *not* the pair for Ana's case. Three runs — Tomasz, Sofia, Snezana — now log
+  that exact pair spuriously, where v1 did not. The change fixed its target
+  (Ana: wrong pair → correct pair) and appears to have advertised the pair it
+  was warning about.
