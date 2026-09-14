@@ -23,7 +23,14 @@ import {
   type Scorecard,
   type VersionResults,
 } from "@/lib/schema";
-import { formatUsd } from "@/lib/llm";
+import {
+  formatTokens,
+  formatUsd,
+  formatUsdPair,
+  ROLES,
+  totalSpend,
+  type Role,
+} from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -151,7 +158,11 @@ function MetricStrip({
         <Metric
           value={`${card.vulnerability_correct}/${card.vulnerability_scored}`}
           label="Vulnerability flag"
-          detail="matched expectation"
+          detail={
+            card.unscorable_total === 0
+              ? "matched expectation"
+              : `matched · ${card.unscorable_total} not scored`
+          }
         />
         <Metric
           value={
@@ -166,7 +177,17 @@ function MetricStrip({
               : `${pct(agreement.rate)} over ${agreement.labelled_runs} hand-labelled runs`
           }
         />
-        <Metric value={formatUsd(card.spend.cost_usd)} label="Spend" detail="this run" />
+        <Metric
+          value={formatUsd(card.mean_cost_per_conversation)}
+          label="Cost per conversation"
+          detail={`agent only · ${card.completed_conversations}/${card.total_runs} completed`}
+        />
+        <Metric
+          value={formatUsd(card.cost_total)}
+          label="Total run cost"
+          detail="agent, client sim and judge"
+          tone={card.unpriced_tokens > 0 ? "var(--fail)" : undefined}
+        />
       </div>
       <p className="prose-serif border-b border-rule bg-card px-6 py-3 text-ink-soft lg:px-10" style={{ fontSize: "0.9375rem" }}>
         {SAMPLE_CAVEAT}
@@ -175,6 +196,149 @@ function MetricStrip({
           : ""}
       </p>
     </div>
+  );
+}
+
+const ROLE_LABEL: Record<Role, string> = {
+  agent: "Agent",
+  persona: "Client simulator",
+  judge: "Judge",
+};
+
+const ROLE_NOTE: Record<Role, string> = {
+  agent: "the thing under test",
+  persona: "test apparatus — would not exist with a real client",
+  judge: "test apparatus — scores, does not converse",
+};
+
+/**
+ * Cost, and what was deliberately left out of the rates above.
+ *
+ * Both halves exist for the same reason: a number is only readable next to its
+ * denominator. "Cost per conversation" means nothing without saying whose
+ * tokens are in it, and a pass rate means nothing without saying which cases
+ * were excluded from it.
+ */
+function Ledger({ card, models }: { card: Scorecard; models: Record<Role, string> }) {
+  const exclusions: { what: string; detail: string }[] = [];
+
+  for (const [field, ids] of Object.entries(card.unscorable_by_field)) {
+    exclusions.push({
+      what: `${ids.length} × ${field.replace(/^expected_/, "").replace(/_/g, " ")}`,
+      detail: `ground truth is null — either answer is defensible. ${ids.join(", ")}`,
+    });
+  }
+  if (card.tolerated_pairs_total > 0) {
+    exclusions.push({
+      what: `${card.tolerated_pairs_total} × contradiction pair`,
+      detail:
+        "defensible but not required: neither rewarded nor penalised, so outside precision",
+    });
+  }
+  if (card.invalid_runs > 0) {
+    exclusions.push({
+      what: `${card.invalid_runs} × invalid run`,
+      detail:
+        "no schema-valid profile, so nothing to score — counted as its own finding, not as five failures",
+    });
+  }
+
+  const [meanAgent, meanHarness] = formatUsdPair(
+    card.mean_cost_per_conversation,
+    card.mean_harness_cost_per_conversation,
+  );
+
+  return (
+    <section className="grid border-b border-rule bg-card lg:grid-cols-2 lg:divide-x lg:divide-rule">
+      <div className="px-6 py-5 lg:px-10">
+        <h2 className="text-[0.9375rem] font-semibold">Cost</h2>
+        <div className="overflow-x-auto">
+          <table className="ledger mt-1">
+            <thead>
+              <tr>
+                <th className="col-head">Role</th>
+                <th className="col-head">In</th>
+                <th className="col-head">Out</th>
+                <th className="col-head">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ROLES.map((role) => (
+                <tr key={role}>
+                  <td>
+                    <span className="font-medium">{ROLE_LABEL[role]}</span>
+                    <span className="block text-[0.78125rem] text-ink-faint">
+                      {models[role]} · {ROLE_NOTE[role]}
+                    </span>
+                  </td>
+                  <td className="tnum align-top">
+                    {formatTokens(card.spend[role].input_tokens)}
+                  </td>
+                  <td className="tnum align-top">
+                    {formatTokens(card.spend[role].output_tokens)}
+                  </td>
+                  <td className="tnum align-top font-semibold">
+                    {formatUsd(card.spend[role].cost_usd)}
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td className="font-medium">Total</td>
+                <td className="tnum align-top">
+                  {formatTokens(totalSpend(card.spend).input_tokens)}
+                </td>
+                <td className="tnum align-top">
+                  {formatTokens(totalSpend(card.spend).output_tokens)}
+                </td>
+                <td className="tnum align-top font-semibold">
+                  {formatUsd(card.cost_total)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="prose-serif mt-3 text-ink-soft" style={{ fontSize: "0.9375rem" }}>
+          <span className="tnum font-semibold text-ink">{meanAgent}</span> is
+          the mean cost of one completed conversation, counting the agent only,
+          over {card.completed_conversations} of {card.total_runs} runs. The
+          client simulator and the judge are excluded because neither exists
+          when a real client is on the other end; including the simulator it is{" "}
+          <span className="tnum">{meanHarness}</span>.
+        </p>
+        {card.unpriced_tokens > 0 ? (
+          <p className="prose-serif mt-2 font-semibold" style={{ color: "var(--fail)" }}>
+            {formatTokens(card.unpriced_tokens)} tokens were billed by a model
+            with no entry in the rates table. Every cost above is understated.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="px-6 py-5 lg:px-10">
+        <h2 className="text-[0.9375rem] font-semibold">
+          Not scored
+          <span className="ml-2 font-normal text-ink-soft">
+            {card.unscorable_total} null expectation
+            {card.unscorable_total === 1 ? "" : "s"}
+          </span>
+        </h2>
+        {exclusions.length === 0 ? (
+          <p className="prose-serif mt-2 text-ink-soft">
+            Every case is scored. Nothing sits outside a denominator.
+          </p>
+        ) : (
+          <ul className="mt-2 divide-y divide-rule">
+            {exclusions.map((e) => (
+              <li key={e.what} className="py-2">
+                <span className="tnum font-medium">{e.what}</span>
+                <span className="block text-[0.8125rem] text-ink-soft">
+                  {e.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -190,6 +354,29 @@ function rateTone(id: CriterionId, card: Scorecard) {
   if (card.pass_rates[id] === 1) return { color: "var(--pass)" };
   if (DISQUALIFYING.includes(id)) return { color: "var(--fail)" };
   return undefined;
+}
+
+/**
+ * The number under a criterion that a pass rate alone would hide: what the
+ * near-misses look like, and how many cases sit outside the denominator.
+ */
+function criterionAside(id: CriterionId, card: Scorecard): string | null {
+  if (id === "risk_band") {
+    return `within one: ${card.band_within_one}/${card.scored_runs} (${pct(card.band_within_one_rate)})`;
+  }
+  if (id === "contradictions") {
+    const parts = [
+      `precision ${pct(card.contradiction_precision)}`,
+      `recall ${pct(card.contradiction_recall)}`,
+    ];
+    if (card.tolerated_pairs_total > 0) {
+      parts.push(
+        `${card.tolerated_pairs_total} acceptable pairs excluded from precision`,
+      );
+    }
+    return parts.join(" · ");
+  }
+  return null;
 }
 
 function Scorecard1({ card }: { card: Scorecard }) {
@@ -210,6 +397,11 @@ function Scorecard1({ card }: { card: Scorecard }) {
               <span className="block text-[0.78125rem] text-ink-faint">
                 {CRITERION_NOTES[id]}
               </span>
+              {criterionAside(id, card) ? (
+                <span className="tnum block text-[0.78125rem] text-ink-soft">
+                  {criterionAside(id, card)}
+                </span>
+              ) : null}
             </td>
             <td className="tnum align-top">
               {card.pass_counts[id]}/{card.scored_runs}
@@ -568,6 +760,8 @@ export default async function GatePage({
       )}
 
       <MetricStrip card={card} agreement={agreement} />
+
+      <Ledger card={card} models={current.models} />
 
       <section className="border-b border-rule bg-card">
         <h2 className="px-6 pt-5 pb-2 text-[0.9375rem] font-semibold lg:px-10">

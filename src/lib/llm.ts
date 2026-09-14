@@ -24,7 +24,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type * as z from "zod/v4";
-import type { TokenSpend } from "./schema";
+import { modelFor, spendOf, type Role, type TokenSpend } from "./config";
 
 export class LLMError extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -33,88 +33,16 @@ export class LLMError extends Error {
   }
 }
 
-// --- Model split ------------------------------------------------------------
+// --- Model split and spend -------------------------------------------------
+//
+// Both live in src/lib/config.ts: which model plays which role, and the rates
+// that turn tokens into the cost shown on the verdict screen. Nothing here
+// hard-codes either, so an arm is swapped by configuration rather than by
+// editing this file.
 
-/**
- * The model split.
- *
- * - persona: cheap and fast, plays the client. It only has to follow a script.
- * - agent:   the thing under test. Sonnet 5 rather than Opus, because a bank
- *            running retail suitability intake at scale would not put a
- *            frontier model on a questionnaire, and the gate should describe
- *            what would actually be deployed.
- * - judge:   Opus 5. Deliberately NOT the same model as the agent: a model
- *            grading its own output carries a self-preference bias that is a
- *            known and nameable weakness. Grading with the stronger model also
- *            means the judge is not the limiting factor.
- *
- * Overridable so a run can be repeated elsewhere, but these defaults are what
- * the numbers in the README were produced with.
- */
-export const MODELS = {
-  persona: process.env.PERSONA_MODEL ?? "claude-haiku-4-5",
-  agent: process.env.AGENT_MODEL ?? "claude-sonnet-5",
-  judge: process.env.JUDGE_MODEL ?? "claude-opus-5",
-};
-
-export type Tier = keyof typeof MODELS;
-
-/** USD per million tokens. Cache reads bill at ~0.1x the input rate. */
-const PRICES: Record<string, { input: number; output: number }> = {
-  "claude-opus-5": { input: 5, output: 25 },
-  "claude-sonnet-5": { input: 2, output: 10 },
-  "claude-haiku-4-5": { input: 1, output: 5 },
-};
-
-/** Haiku 4.5 predates adaptive thinking and rejects `output_config.effort`. */
+/** Haiku 4.5 predates adaptive thinking, and takes a smaller default ceiling. */
 function isThinkingModel(model: string): boolean {
   return !model.startsWith("claude-haiku");
-}
-
-// --- Spend ------------------------------------------------------------------
-
-export function emptySpend(): TokenSpend {
-  return {
-    input_tokens: 0,
-    output_tokens: 0,
-    cache_read_input_tokens: 0,
-    cost_usd: 0,
-  };
-}
-
-export function addSpend(a: TokenSpend, b: TokenSpend): TokenSpend {
-  return {
-    input_tokens: a.input_tokens + b.input_tokens,
-    output_tokens: a.output_tokens + b.output_tokens,
-    cache_read_input_tokens:
-      a.cache_read_input_tokens + b.cache_read_input_tokens,
-    cost_usd: a.cost_usd + b.cost_usd,
-  };
-}
-
-function spendOf(model: string, usage: Anthropic.Usage): TokenSpend {
-  const price = PRICES[model];
-  const input = usage.input_tokens ?? 0;
-  const output = usage.output_tokens ?? 0;
-  const cacheRead = usage.cache_read_input_tokens ?? 0;
-  // An unpriced model reports tokens with a zero cost rather than a wrong one.
-  const cost = price
-    ? (input * price.input +
-        cacheRead * price.input * 0.1 +
-        output * price.output) /
-      1_000_000
-    : 0;
-  return {
-    input_tokens: input,
-    output_tokens: output,
-    cache_read_input_tokens: cacheRead,
-    cost_usd: cost,
-  };
-}
-
-export function formatUsd(cost: number): string {
-  if (cost === 0) return "$0.00";
-  return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
 }
 
 // --- Transport --------------------------------------------------------------
@@ -185,7 +113,13 @@ export interface Completion {
 }
 
 export interface CompleteOptions {
-  tier: Tier;
+  role: Role;
+  /**
+   * Overrides the configured model for this role, for this call only. Used by
+   * the intake route so an arm can be swapped per request; every other caller
+   * leaves it unset and takes the configured model.
+   */
+  model?: string;
   system: string;
   messages: Anthropic.MessageParam[];
   maxTokens?: number;
@@ -205,8 +139,8 @@ export interface CompleteOptions {
 }
 
 export async function complete(opts: CompleteOptions): Promise<Completion> {
-  const model = MODELS[opts.tier];
-  const label = opts.label ?? opts.tier;
+  const model = opts.model ?? modelFor(opts.role);
+  const label = opts.label ?? opts.role;
 
   const response = await withRetry(label, () =>
     client().messages.create({

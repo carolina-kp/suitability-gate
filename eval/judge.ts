@@ -25,13 +25,20 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import * as z from "zod/v4";
-import { completeJson, addSpend, emptySpend } from "../src/lib/llm";
+import { completeJson } from "../src/lib/llm";
+import {
+  addRoleSpend,
+  addSpend,
+  emptyRoleSpend,
+  emptySpend,
+  formatUsd,
+  type TokenSpend,
+} from "../src/lib/config";
 import {
   EVIDENCE_FIELDS,
   pairKey,
   type CriterionResult,
   type SuitabilityProfile,
-  type TokenSpend,
   type Turn,
   type VersionResults,
 } from "../src/lib/schema";
@@ -254,7 +261,7 @@ async function judgeBinary(
   };
 
   const res = await completeJson({
-    tier: "judge",
+    role: "judge",
     label: "judge",
     system: JUDGE_SYSTEM,
     messages: [
@@ -375,14 +382,23 @@ async function main(): Promise<number> {
     }
     const judged = await judgeRun(persona, run.transcript, run.profile);
     run.criteria = judged.criteria;
+    // Replace the run's judge spend rather than adding to it. This pass
+    // supersedes the previous verdict, so carrying both would report a cost
+    // for a judgement that is no longer in the file.
+    run.spend = { ...run.spend, judge: judged.spend };
     spend = addSpend(spend, judged.spend);
     const failed = judged.criteria.filter((c) => !c.passed).length;
     console.log(`  ${run.persona_id.padEnd(30)} ${failed === 0 ? "clean" : `${failed} fail`}`);
   }
 
-  results.spend = addSpend(results.spend, spend);
+  results.spend = results.runs.reduce(
+    (a, r) => addRoleSpend(a, r.spend),
+    emptyRoleSpend(),
+  );
   writeFileSync(path, JSON.stringify(results, null, 2) + "\n");
-  console.log(`\nRe-judged ${version} in place. Judge spend this pass: $${spend.cost_usd.toFixed(4)}\n`);
+  console.log(
+    `\nRe-judged ${version} in place. Judge spend this pass: ${formatUsd(spend.cost_usd)}\n`,
+  );
   return 0;
 }
 

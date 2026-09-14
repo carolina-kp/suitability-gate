@@ -8,7 +8,7 @@
     "start": "next start",
     "eval": "tsx eval/run_eval.ts",
     "judge": "tsx eval/judge.ts",
-    "test": "tsx --test eval/policy.test.ts"
+    "test": "tsx --test eval/policy.test.ts eval/config.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

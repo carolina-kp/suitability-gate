@@ -28,13 +28,29 @@
  */
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
-import { complete, addSpend, emptySpend, formatUsd, MODELS } from "../src/lib/llm";
+import { complete } from "../src/lib/llm";
+import {
+  addRoleSpend,
+  addSpend,
+  addToRole,
+  assertRatesKnown,
+  conversationSpend,
+  currentModels,
+  emptyRoleSpend,
+  emptySpend,
+  formatTokens,
+  formatUsd,
+  ROLES,
+  setModel,
+  totalSpend,
+  type Role,
+  type RoleSpend,
+  type TokenSpend,
+} from "../src/lib/config";
 import { MAX_TURNS, VERSIONS, type Version } from "../src/lib/agent";
 import {
-  computeRiskBand,
   type RunResult,
   type SuitabilityProfile,
-  type TokenSpend,
   type Turn,
   type VersionResults,
 } from "../src/lib/schema";
@@ -125,7 +141,7 @@ async function personaReply(
     content: t.text,
   }));
   const result = await complete({
-    tier: "persona",
+    role: "persona",
     label: `persona:${p.id}`,
     system: personaSystem(p),
     messages,
@@ -138,11 +154,14 @@ async function personaReply(
 
 interface IntakeResponse {
   version: string;
+  /** The model that actually answered, echoed back by the route. */
+  agent_model: string;
   turn: Turn;
   done: boolean;
   profile: SuitabilityProfile | null;
   error: string | null;
   invariant_problems: string[];
+  /** Agent-role spend only — the route never calls the persona or the judge. */
   spend: TokenSpend;
 }
 
@@ -151,15 +170,16 @@ class UnreachableError extends Error {}
 async function postIntake(
   version: Version,
   transcript: Turn[],
+  agentModel: string,
 ): Promise<IntakeResponse> {
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}/api/intake`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ version, transcript }),
+      body: JSON.stringify({ version, transcript, agent_model: agentModel }),
     });
-  } catch (cause) {
+  } catch {
     throw new UnreachableError(`cannot reach ${BASE_URL}`);
   }
   const body = (await res.json()) as Partial<IntakeResponse> & { error?: string };
@@ -170,24 +190,45 @@ async function postIntake(
   return body as IntakeResponse;
 }
 
+interface Conversation {
+  transcript: Turn[];
+  profile: SuitabilityProfile | null;
+  error: string | null;
+  /** Reached a natural end, whether or not the extraction then validated. */
+  completed: boolean;
+  /** What the route said it ran, so results record fact rather than intent. */
+  agent_model: string | null;
+  spend: RoleSpend;
+}
+
 async function runPersona(
   version: Version,
   persona: Persona,
-): Promise<{ transcript: Turn[]; profile: SuitabilityProfile | null; error: string | null; spend: TokenSpend }> {
+  agentModel: string,
+): Promise<Conversation> {
   const transcript: Turn[] = [];
-  let spend = emptySpend();
+  let spend = emptyRoleSpend();
+  let observed: string | null = null;
 
   for (let i = 0; i <= MAX_TURNS; i++) {
-    const res = await postIntake(version, transcript);
-    spend = addSpend(spend, res.spend);
+    const res = await postIntake(version, transcript, agentModel);
+    spend = addToRole(spend, "agent", res.spend);
+    observed = res.agent_model ?? observed;
     transcript.push({ ...res.turn, index: transcript.length });
 
     if (res.done) {
-      return { transcript, profile: res.profile, error: res.error, spend };
+      return {
+        transcript,
+        profile: res.profile,
+        error: res.error,
+        completed: true,
+        agent_model: observed,
+        spend,
+      };
     }
 
     const reply = await personaReply(persona, transcript);
-    spend = addSpend(spend, reply.spend);
+    spend = addToRole(spend, "persona", reply.spend);
     transcript.push({
       role: "client",
       text: reply.text,
@@ -195,10 +236,15 @@ async function runPersona(
     });
   }
 
+  // The conversation never closed itself. That is a harness-visible defect in
+  // the agent, not a completed conversation with a bad profile, so it is
+  // excluded from the per-conversation cost mean.
   return {
     transcript,
     profile: null,
     error: `conversation did not terminate within ${MAX_TURNS} turns`,
+    completed: false,
+    agent_model: observed,
     spend,
   };
 }
@@ -223,19 +269,31 @@ async function pool<T, R>(
   return out;
 }
 
+/**
+ * Ground-truth expectations that are excluded from a denominator when null.
+ *
+ * `expected_risk_band: null` is deliberately NOT here. Tomasz's null is a
+ * scored expectation — the right answer is "no band", and producing one is the
+ * failure. A field belongs on this list only when null means "either answer is
+ * defensible, so do not score it".
+ */
+const UNSCORABLE_WHEN_NULL = ["expected_vulnerability_flag"] as const;
+
+function unscorableFields(gt: GroundTruth): string[] {
+  return UNSCORABLE_WHEN_NULL.filter((f) => gt[f] === null);
+}
+
 async function runVersion(
   version: Version,
   personas: Persona[],
-): Promise<VersionResults> {
+  agentModel: string,
+): Promise<{ results: VersionResults; observedAgentModels: Set<string> }> {
+  const observedAgentModels = new Set<string>();
+
   const runs = await pool(personas, CONCURRENCY, async (persona) => {
     const gt = persona.ground_truth;
-    let convo;
-    try {
-      convo = await runPersona(version, persona);
-    } catch (err) {
-      if (err instanceof UnreachableError) throw err;
-      throw err;
-    }
+    const convo = await runPersona(version, persona, agentModel);
+    if (convo.agent_model) observedAgentModels.add(convo.agent_model);
 
     const base = {
       persona_id: persona.id,
@@ -245,6 +303,9 @@ async function runVersion(
       expected_outcome: gt.expected_outcome,
       expected_vulnerability_flag: gt.expected_vulnerability_flag,
       transcript: convo.transcript,
+      conversation_completed: convo.completed,
+      unscorable_fields: unscorableFields(gt),
+      tolerated_contradiction_pairs: gt.acceptable_contradictions.length,
       spend: convo.spend,
     };
 
@@ -263,7 +324,9 @@ async function runVersion(
         profile: convo.profile,
         criteria: [],
       };
-      process.stdout.write(`  ${version} ${persona.id.padEnd(30)} INVALID\n`);
+      process.stdout.write(
+        `  ${version} ${persona.id.padEnd(30)} INVALID${tokenNote(r.spend)}\n`,
+      );
       return r;
     }
 
@@ -281,22 +344,45 @@ async function runVersion(
       band_divergence: p.band_divergence,
       profile: p,
       criteria: judged.criteria,
-      spend: addSpend(convo.spend, judged.spend),
+      spend: addToRole(convo.spend, "judge", judged.spend),
     };
     const failed = r.criteria.filter((c) => !c.passed).length;
     process.stdout.write(
-      `  ${version} ${persona.id.padEnd(30)} band ${String(p.risk_band ?? "-").padStart(2)}/${gt.expected_risk_band ?? "-"}  ${failed === 0 ? "clean" : `${failed} fail`}\n`,
+      `  ${version} ${persona.id.padEnd(30)} band ${String(p.risk_band ?? "-").padStart(2)}/${gt.expected_risk_band ?? "-"}  ${(failed === 0 ? "clean" : `${failed} fail`).padEnd(7)}${tokenNote(r.spend)}\n`,
     );
     return r;
   });
 
   return {
-    version,
-    ran_at: new Date().toISOString(),
-    models: { agent: MODELS.agent, persona: MODELS.persona, judge: MODELS.judge },
-    runs,
-    spend: runs.reduce((a, r) => addSpend(a, r.spend), emptySpend()),
+    results: {
+      version,
+      ran_at: new Date().toISOString(),
+      // The agent model is what the route reported running, not what was
+      // requested. The other two run in this process, so they are read
+      // straight from config.
+      models: {
+        ...currentModels(),
+        agent: [...observedAgentModels].join(" + ") || agentModel,
+      },
+      runs,
+      spend: runs.reduce((a, r) => addRoleSpend(a, r.spend), emptyRoleSpend()),
+    },
+    observedAgentModels,
   };
+}
+
+/** Per-role tokens, per run: `agent 4.2k/0.9k · client 1.1k/0.3k · judge ...` */
+function tokenNote(spend: RoleSpend): string {
+  const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  const parts = ROLES.filter(
+    (role) => spend[role].input_tokens + spend[role].output_tokens > 0,
+  ).map(
+    (role) =>
+      `${role === "persona" ? "client" : role} ${k(spend[role].input_tokens)}/${k(spend[role].output_tokens)}`,
+  );
+  return parts.length === 0
+    ? ""
+    : `  ${parts.join(" · ")}  ${formatUsd(totalSpend(spend).cost_usd)}`;
 }
 
 // --- Entry point ------------------------------------------------------------
@@ -309,6 +395,24 @@ async function main(): Promise<number> {
   const onlyIdx = args.indexOf("--only");
   const only = onlyIdx >= 0 ? args[onlyIdx + 1] : null;
   const dryRun = args.includes("--dry-run");
+
+  // Arm swapping. `--agent=claude-opus-5` overrides config for this run; the
+  // agent model travels to the route in the request body, because the agent
+  // runs behind HTTP and would otherwise keep whatever the server started with.
+  for (const role of ROLES) {
+    const flag = args.find((a) => a.startsWith(`--${role}=`));
+    if (flag) setModel(role, flag.slice(`--${role}=`.length));
+  }
+  const models = currentModels();
+
+  // Refuse before spending, not after reporting. A model with no rate would
+  // produce a run whose cost is $0.00 for the wrong reason.
+  try {
+    assertRatesKnown(Object.values(models));
+  } catch (err) {
+    console.error(`FATAL: ${(err as Error).message}`);
+    return 2;
+  }
 
   const targets = versions.length > 0 ? versions : [...VERSIONS];
   let personas = loadPersonas();
@@ -343,21 +447,21 @@ async function main(): Promise<number> {
     `\nsuitability-gate eval · ${BASE_URL} · ${personas.length} personas × ${targets.length} version(s)`,
   );
   console.log(
-    `  agent ${MODELS.agent} · persona ${MODELS.persona} · judge ${MODELS.judge}\n`,
+    `  agent ${models.agent} · judge ${models.judge} · client ${models.persona}\n`,
   );
 
   if (dryRun) {
-    console.log("Dry run: fixtures load and the app is reachable. Nothing spent.\n");
+    console.log("Dry run: fixtures load, rates are known, and the app is reachable. Nothing spent.\n");
     return 0;
   }
 
   mkdirSync(join(process.cwd(), "results"), { recursive: true });
-  let total = emptySpend();
+  let total = emptyRoleSpend();
 
   for (const version of targets) {
-    let results: VersionResults;
+    let ran: Awaited<ReturnType<typeof runVersion>>;
     try {
-      results = await runVersion(version, personas);
+      ran = await runVersion(version, personas, models.agent);
     } catch (err) {
       if (err instanceof UnreachableError) {
         console.error(`\nFATAL: ${err.message} — aborting rather than scoring a partial run.`);
@@ -365,20 +469,70 @@ async function main(): Promise<number> {
       }
       throw err;
     }
+    const results = ran.results;
+
+    // The route is the authority on which model answered. If it ran something
+    // other than what was asked for, the results file would be describing a
+    // model that was not under test.
+    if (ran.observedAgentModels.size > 1) {
+      console.error(
+        `\nFATAL: the route answered with more than one agent model (${[...ran.observedAgentModels].join(", ")}).`,
+      );
+      return 2;
+    }
+    const observed = [...ran.observedAgentModels][0];
+    if (observed && observed !== models.agent) {
+      console.error(
+        `\nFATAL: asked for agent ${models.agent}, the route ran ${observed}. Refusing to label these results.`,
+      );
+      return 2;
+    }
 
     const out = join(process.cwd(), "results", `${version}.json`);
     writeFileSync(out, JSON.stringify(results, null, 2) + "\n");
-    total = addSpend(total, results.spend);
-    console.log(
-      `\n  ${version}: ${results.runs.length} runs · ${formatUsd(results.spend.cost_usd)} · ${out.replace(process.cwd() + "/", "")}\n`,
-    );
+    total = addRoleSpend(total, results.spend);
+
+    console.log(`\n  ${version}: ${results.runs.length} runs · ${out.replace(process.cwd() + "/", "")}`);
+    console.log(costTable(results));
   }
 
-  console.log(
-    `Total spend: ${formatUsd(total.cost_usd)}  (${total.input_tokens.toLocaleString()} in / ${total.output_tokens.toLocaleString()} out)\n`,
-  );
+  if (targets.length > 1) {
+    console.log(`Total across versions: ${formatUsd(totalSpend(total).cost_usd)}\n`);
+  }
   console.log("Open http://localhost:3000/gate to see the verdict.\n");
   return 0;
+}
+
+/**
+ * Cost, per role, stated with its denominator.
+ *
+ * The per-conversation mean counts the AGENT only: the client simulator and
+ * the judge are test apparatus, and neither exists when a real client is on
+ * the other end. Reporting their cost as part of "what a conversation costs"
+ * would be a number nobody could act on.
+ */
+function costTable(results: VersionResults): string {
+  const completed = results.runs.filter((r) => r.conversation_completed);
+  const agentCost = completed.reduce(
+    (a, r) => a + conversationSpend(r.spend).cost_usd,
+    0,
+  );
+  const total = totalSpend(results.spend);
+
+  const rows = ROLES.map((role) => {
+    const s = results.spend[role];
+    const label = role === "persona" ? "client sim" : role;
+    return `    ${label.padEnd(11)} ${formatTokens(s.input_tokens).padStart(9)} in  ${formatTokens(s.output_tokens).padStart(8)} out  ${formatUsd(s.cost_usd).padStart(9)}`;
+  });
+
+  const mean = completed.length === 0 ? 0 : agentCost / completed.length;
+  return [
+    ...rows,
+    `    ${"total".padEnd(11)} ${formatTokens(total.input_tokens).padStart(9)} in  ${formatTokens(total.output_tokens).padStart(8)} out  ${formatUsd(total.cost_usd).padStart(9)}`,
+    ``,
+    `    mean per completed conversation (agent only): ${formatUsd(mean)}  over ${completed.length}/${results.runs.length}`,
+    ``,
+  ].join("\n");
 }
 
 if (process.argv[1]?.endsWith("run_eval.ts")) {

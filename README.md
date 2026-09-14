@@ -30,7 +30,7 @@ Then open <http://localhost:3000/gate>.
 | Command | What it does |
 |---|---|
 | `npm run dev` | The app and the intake route |
-| `npm test` | The policy and fixture-consistency tests. No API key needed |
+| `npm test` | The policy, the rates and cost arithmetic, and fixture consistency. No API key needed |
 | `npm run eval -- v2` | Run one prompt version against all twenty personas |
 | `npm run eval -- v1 --only 02-ana` | One persona, by id prefix |
 | `npm run judge -- v1` | Re-score saved transcripts without re-running conversations |
@@ -42,12 +42,63 @@ already paid for.
 
 | Role | Model | Why |
 |---|---|---|
+| Agent under test | `claude-haiku-4-5` | What a bank running retail onboarding at scale would actually deploy on a questionnaire. It is also the harder case: a policy split that holds on Haiku holds on anything above it |
+| Judge | `claude-sonnet-5` | Deliberately **not** the agent's model — a model grading its own output has a self-preference bias — and a tier above it, so the judge is not the limiting factor |
 | Client persona | `claude-haiku-4-5` | Only has to follow a script |
-| Agent under test | `claude-sonnet-5` | What a bank would actually deploy on a retail questionnaire |
-| Judge | `claude-opus-5` | Deliberately **not** the agent's model — a model grading its own output has a self-preference bias |
 
-Per-run token spend and cost are logged and shown on the screen. All three are
-overridable in `.env.local`.
+Every model is a config value in `src/lib/config.ts`, not a constant at a call
+site, so an arm is swapped without editing the harness:
+
+```bash
+npm run eval -- v1 --agent=claude-sonnet-5      # one flag, a different arm
+```
+
+The agent model travels to the route in the request body, because the agent
+runs behind HTTP and would otherwise keep whatever the server started with. The
+route validates it, and the results file records the model the route **reported
+running** rather than the one the harness asked for — if those disagree the run
+aborts instead of labelling results with a model that was not under test.
+
+Two properties are asserted in `eval/config.test.ts` rather than left as
+comments: that the judge is never the agent's own model, and that every model
+in the arm has a rate.
+
+## Cost
+
+Tokens are logged per role per run — the agent separately from the client
+simulator and the judge — and converted through a rates table in
+`src/lib/config.ts`. Two numbers are on the screen:
+
+| Number | What is in it |
+|---|---|
+| **Cost per conversation** | The **agent only**, averaged over conversations that actually completed. The client simulator and the judge are test apparatus; neither exists when a real client is on the other end, so including them would overstate what this costs to run for real |
+| **Total run cost** | Everything: agent, client simulator, judge |
+
+A model with no entry in the rates table does not quietly report `$0.00` — the
+eval refuses to start, and any tokens that somehow reach the screen unpriced
+are counted and shown in red. A cost that is wrong in the direction of looking
+cheap is exactly the kind of plausible number this project exists to refuse.
+
+## What is deliberately not scored
+
+Some ground-truth expectations are `null`, meaning either answer is defensible,
+and those cases are excluded from the denominator of the rate they would
+otherwise feed. Excluding them quietly would be a way of shrinking a
+denominator until a rate looks better, so the count is printed on the screen
+next to the rate it affects, naming the personas:
+
+- **Ilona's vulnerability flag.** A 68-year-old on pension-only income reaching
+  for yield is arguably a vulnerability signal. Scoring a false positive against
+  an agent that flags her would punish a judgement call.
+- **Eleven acceptable contradiction pairs.** Defensible but not required:
+  neither rewarded nor penalised, so they sit outside precision. Five required
+  pairs drive both precision and recall.
+- **Invalid runs**, which have no profile to score and are counted as their own
+  finding rather than as five criterion failures.
+
+Tomasz's `null` expected band is *not* in this category and stays in the
+denominator: there, the correct answer is "no band", and producing one is the
+failure.
 
 ## The verdict rule
 
@@ -81,6 +132,7 @@ do is how eval harnesses acquire noise they cannot then explain.
 ## Layout
 
 ```
+src/lib/config.ts       models per role, the rates table, spend arithmetic
 src/lib/schema.ts       profile schema, the policy function, criteria, verdict rule
 src/lib/llm.ts          Anthropic client wrapper, retries, spend accounting
 src/lib/agent.ts        turn engine and profile extraction
@@ -91,6 +143,7 @@ src/app/gate/page.tsx   the verdict screen
 eval/run_eval.ts        persona simulator and runner
 eval/judge.ts           the judge
 eval/policy.test.ts     the policy, and every fixture's internal consistency
+eval/config.test.ts     the model split, the rates, and the scorecard's denominators
 fixtures/personas/      twenty personas; the six adversarial ones are hand-written
 ```
 

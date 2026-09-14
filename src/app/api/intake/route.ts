@@ -19,7 +19,8 @@ import {
   nextTurn,
   VERSIONS,
 } from "@/lib/agent";
-import { addSpend, emptySpend, LLMError } from "@/lib/llm";
+import { LLMError } from "@/lib/llm";
+import { addSpend, emptySpend, modelFor, rateFor } from "@/lib/config";
 import type { Turn } from "@/lib/schema";
 
 const turnSchema = z.object({
@@ -31,6 +32,14 @@ const turnSchema = z.object({
 const bodySchema = z.object({
   version: z.enum(VERSIONS).optional(),
   transcript: z.array(turnSchema).max(2 * MAX_TURNS + 2).optional(),
+  /**
+   * Swap the arm for this request. Defaults to the configured agent model.
+   * Validated against the rates table below rather than passed through: a
+   * model with no known price would produce a run whose cost cannot be
+   * computed, and a $0.00 that is really "we don't know" is worse than a
+   * refusal.
+   */
+  agent_model: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -51,13 +60,24 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const version = isVersion(body.version) ? body.version : DEFAULT_VERSION;
+
+  const agentModel = body.agent_model ?? modelFor("agent");
+  if (rateFor(agentModel) === null) {
+    return Response.json(
+      {
+        error: `No rate is configured for "${agentModel}". Add it to RATES in src/lib/config.ts — a run whose cost cannot be computed must not report one.`,
+      },
+      { status: 400 },
+    );
+  }
+
   const transcript: Turn[] = (body.transcript ?? []).map((t, i) => ({
     ...t,
     index: i, // re-index server-side so evidence indices can never be spoofed
   }));
 
   try {
-    const turn = await nextTurn(version, transcript);
+    const turn = await nextTurn(version, transcript, agentModel);
     let spend = turn.completion.spend;
 
     const agentTurn: Turn = {
@@ -69,6 +89,9 @@ export async function POST(request: Request): Promise<Response> {
     if (!turn.done) {
       return Response.json({
         version,
+        // What actually ran, not what was asked for — the results file records
+        // the observed model rather than the harness's assumption.
+        agent_model: turn.completion.model,
         turn: agentTurn,
         done: false,
         profile: null,
@@ -79,11 +102,12 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const full = [...transcript, agentTurn];
-    const extraction = await extractProfile(version, full);
+    const extraction = await extractProfile(version, full, agentModel);
     spend = addSpend(spend, extraction.completion.spend);
 
     return Response.json({
       version,
+      agent_model: extraction.completion.model,
       turn: agentTurn,
       done: true,
       profile: extraction.profile,
@@ -98,7 +122,7 @@ export async function POST(request: Request): Promise<Response> {
     const message =
       err instanceof LLMError ? err.message : "The intake agent is unavailable.";
     return Response.json(
-      { error: message, version, spend: emptySpend() },
+      { error: message, version, agent_model: agentModel, spend: emptySpend() },
       { status: 503 },
     );
   }

@@ -18,6 +18,17 @@
 // zod/v4 specifically: `zodOutputFormat` in @anthropic-ai/sdk is typed against
 // it, and a v3 schema is rejected at the type level.
 import * as z from "zod/v4";
+import {
+  conversationSpend,
+  totalSpend,
+  type Role,
+  type RoleSpend,
+} from "./config";
+
+// The run configuration — models per role, rates, spend arithmetic — lives in
+// config.ts. Re-exported here so the rest of the app has one import for "the
+// shapes a result is made of".
+export type { Role, RoleSpend, TokenSpend } from "./config";
 
 // --- The seven things intake must establish ---------------------------------
 
@@ -432,14 +443,6 @@ export interface Turn {
   index: number;
 }
 
-export interface TokenSpend {
-  input_tokens: number;
-  output_tokens: number;
-  cache_read_input_tokens: number;
-  /** USD, computed from the per-model rates in llm.ts. */
-  cost_usd: number;
-}
-
 // --- Judge ------------------------------------------------------------------
 
 export const CRITERIA = [
@@ -515,15 +518,44 @@ export interface RunResult {
   transcript: Turn[];
   /** Empty when outcome is "invalid" — nothing was scored. */
   criteria: CriterionResult[];
-  spend: TokenSpend;
+
+  /**
+   * Whether the conversation itself reached a natural end — the agent
+   * signalled completion, or the turn budget closed it. Separate from
+   * `outcome`, because a conversation can finish perfectly and still produce
+   * an extraction that fails validation. Cost per conversation is averaged
+   * over these, so a run that died mid-dialogue does not drag the mean down
+   * with a conversation that never happened.
+   */
+  conversation_completed: boolean;
+
+  /**
+   * Ground-truth expectations deliberately left null for this persona, and
+   * therefore excluded from the denominator of the rate they would feed.
+   * Carried on the run so the screen can count them without reading fixtures.
+   */
+  unscorable_fields: string[];
+  /**
+   * Contradiction pairs marked acceptable-but-not-required for this persona.
+   * Neither rewarded nor penalised, so they sit outside precision.
+   */
+  tolerated_contradiction_pairs: number;
+
+  /** Split by role. One aggregate number cannot separate the agent from the rig. */
+  spend: RoleSpend;
 }
 
 export interface VersionResults {
   version: string;
   ran_at: string;
-  models: { agent: string; persona: string; judge: string };
+  /**
+   * The models that actually ran, as reported back by the route and the
+   * clients — not what the harness intended to use. A config that did not
+   * take is a thing the results file should be able to show.
+   */
+  models: Record<Role, string>;
   runs: RunResult[];
-  spend: TokenSpend;
+  spend: RoleSpend;
 }
 
 // --- Ship verdict -----------------------------------------------------------
@@ -575,7 +607,35 @@ export interface Scorecard {
 
   failing_runs: RunResult[];
   invalid_run_list: RunResult[];
-  spend: TokenSpend;
+
+  // --- Cost ---------------------------------------------------------------
+
+  /** Split by role, so the agent's cost is separable from the test rig's. */
+  spend: RoleSpend;
+  /** Everything this run cost: agent + client simulator + judge. */
+  cost_total: number;
+  /** Conversations that reached a natural end, valid extraction or not. */
+  completed_conversations: number;
+  /**
+   * Mean cost of one completed conversation, counting the AGENT only. The
+   * persona simulator and the judge are test apparatus; neither exists when a
+   * real client is on the other end, so including them would overstate what
+   * this costs to run for real.
+   */
+  mean_cost_per_conversation: number;
+  /** The same mean including the client simulator — what the harness pays. */
+  mean_harness_cost_per_conversation: number;
+  /** Tokens billed by a model with no entry in RATES. Must be zero. */
+  unpriced_tokens: number;
+
+  // --- What is deliberately not scored --------------------------------------
+
+  /** Ground-truth expectations left null, by field, listing the personas. */
+  unscorable_by_field: Record<string, string[]>;
+  /** Total null expectations across all runs. */
+  unscorable_total: number;
+  /** Contradiction pairs marked acceptable, and so outside precision. */
+  tolerated_pairs_total: number;
 }
 
 function rate(n: number, total: number): number {
@@ -660,6 +720,30 @@ export function scoreVersion(results: VersionResults): Scorecard {
     fn += Number(d.false_negatives ?? 0);
   }
 
+  // Cost. Denominators are stated rather than implied: the per-conversation
+  // mean is over conversations that actually happened, and it counts the agent
+  // only, because that is the number a firm would pay.
+  const completed = runs.filter((r) => r.conversation_completed);
+  const agentCost = completed.reduce(
+    (acc, r) => acc + conversationSpend(r.spend).cost_usd,
+    0,
+  );
+  const harnessCost = completed.reduce(
+    (acc, r) => acc + r.spend.agent.cost_usd + r.spend.persona.cost_usd,
+    0,
+  );
+  const totals = totalSpend(results.spend);
+
+  // Expectations deliberately left null: excluded from the denominator of the
+  // rate they would otherwise feed, and counted here so the screen can say so
+  // next to that rate instead of quietly shrinking it.
+  const unscorable_by_field: Record<string, string[]> = {};
+  for (const r of runs) {
+    for (const field of r.unscorable_fields) {
+      (unscorable_by_field[field] ??= []).push(r.persona_id);
+    }
+  }
+
   const divergence_count = scored.filter(
     (r) => r.band_divergence !== null && r.band_divergence !== 0,
   ).length;
@@ -691,7 +775,20 @@ export function scoreVersion(results: VersionResults): Scorecard {
     pass_counts,
     failing_runs: scored.filter((r) => r.criteria.some((c) => !c.passed)),
     invalid_run_list: invalid,
+
     spend: results.spend,
+    cost_total: totals.cost_usd,
+    completed_conversations: completed.length,
+    mean_cost_per_conversation: rate(agentCost, completed.length),
+    mean_harness_cost_per_conversation: rate(harnessCost, completed.length),
+    unpriced_tokens: totals.unpriced_tokens,
+
+    unscorable_by_field,
+    unscorable_total: runs.reduce((a, r) => a + r.unscorable_fields.length, 0),
+    tolerated_pairs_total: runs.reduce(
+      (a, r) => a + r.tolerated_contradiction_pairs,
+      0,
+    ),
   };
 }
 

@@ -109,15 +109,23 @@ export interface TurnResult {
   completion: Completion;
 }
 
-/** Produce the agent's next message for the given transcript. */
+/**
+ * Produce the agent's next message for the given transcript.
+ *
+ * `model` overrides the configured agent model for this call only, so an arm
+ * can be swapped per request rather than per process. The caller is
+ * responsible for having validated it (see the intake route).
+ */
 export async function nextTurn(
   version: Version,
   transcript: Turn[],
+  model?: string,
 ): Promise<TurnResult> {
   const clientTurns = transcript.filter((t) => t.role === "client").length;
 
   const result = await complete({
-    tier: "agent",
+    role: "agent",
+    model,
     label: `intake:${version}`,
     system: `${loadPolicy(version)}\n\n${protocol(clientTurns)}`,
     messages: toMessages(transcript),
@@ -211,9 +219,11 @@ export interface ExtractionResult {
 export async function extractProfile(
   version: Version,
   transcript: Turn[],
+  model?: string,
 ): Promise<ExtractionResult> {
   const result = await completeJson({
-    tier: "agent",
+    role: "agent",
+    model,
     label: `extract:${version}`,
     system: `${loadPolicy(version)}\n\n${EXTRACTION_INSTRUCTIONS}`,
     messages: [
