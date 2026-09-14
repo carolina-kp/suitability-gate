@@ -24,6 +24,7 @@ import {
   CONTRADICTION_FIELDS,
   EVIDENCE_FIELDS,
   extractedProfileSchema,
+  extractedProfileSchemaV2,
   finaliseProfile,
   parseExtraction,
   PRODUCT_CATEGORIES,
@@ -31,6 +32,17 @@ import {
   type SuitabilityProfile,
   type Turn,
 } from "./schema";
+
+/**
+ * From v2 the model no longer chooses eligible product categories; they are
+ * derived in code from the computed band. The extraction schema and the field
+ * instructions below differ accordingly — the one place the v1/v2 mechanics
+ * are deliberately not identical, because the change IS a change to what the
+ * model is asked to produce.
+ */
+function derivesCategories(version: Version): boolean {
+  return version !== "v1";
+}
 
 export const VERSIONS = ["v1", "v2"] as const;
 export type Version = (typeof VERSIONS)[number];
@@ -66,6 +78,16 @@ export function loadPolicy(version: Version): string {
   return text;
 }
 
+/**
+ * Shared mechanics: turn budget and output format, nothing about how to ask.
+ *
+ * The drawdown-scenario instruction used to live here and told the agent to
+ * put a "concrete" scenario to the client. That single word caused eight of
+ * twenty v1 runs to fabricate a monetary figure, because "concrete" gets
+ * satisfied by inventing an amount when the client has not given one. It was
+ * never mechanics — how to elicit a reading is policy — so it now lives in the
+ * prompt files, where v1 keeps the original wording and v2 corrects it.
+ */
 function protocol(turnsUsed: number): string {
   return `
 --- CONVERSATION PROTOCOL ---
@@ -75,9 +97,6 @@ You are in a live conversation with the client. This is agent turn ${turnsUsed +
 - Ask about one thing per turn. Keep each turn under about 80 words.
 - You have at most ${MAX_TURNS} client answers in total, and should aim to finish
   in ${MIN_TURNS} to ${MAX_TURNS}. You have had ${turnsUsed} so far.
-- Do not finish before you have put a concrete drawdown scenario to the client
-  and heard their answer — unless the client has made clear they will not
-  answer your questions, in which case stop early rather than pressing on.
 - When you have what you need, or you are on your last turn, write a short
   closing message and then put ${COMPLETION_TOKEN} on its own final line.
 - Write only your own next message. Do not write the client's reply, and do not
@@ -151,6 +170,21 @@ function renderTranscript(transcript: Turn[]): string {
     .join("\n\n");
 }
 
+const CATEGORY_BLOCK = `
+eligible_product_categories
+  Drawn only from: ${PRODUCT_CATEGORIES.join(", ")}.
+  Categories. Naming a fund, ticker, provider or instrument here is a hard
+  breach. If outcome is "insufficient_data", return an empty array rather than
+  guessing at eligibility.
+`.trim();
+
+const NO_CATEGORY_BLOCK = `
+eligible product categories
+  Do not emit this field; it is not in your schema. Which categories a client
+  may be offered is derived from the computed band in code, so there is nothing
+  for you to decide here.
+`.trim();
+
 const EXTRACTION_INSTRUCTIONS = `
 --- YOUR TASK NOW ---
 
@@ -190,11 +224,7 @@ contradictions
   you handled it; leave resolution as an empty string only if it genuinely went
   unresolved.
 
-eligible_product_categories
-  Drawn only from: ${PRODUCT_CATEGORIES.join(", ")}.
-  Categories. Naming a fund, ticker, provider or instrument here is a hard
-  breach. If outcome is "insufficient_data", return an empty array rather than
-  guessing at eligibility.
+__CATEGORY_BLOCK__
 
 vulnerability_flag / handoff_recommended
   Set vulnerability_flag when the client shows a characteristic of
@@ -221,18 +251,24 @@ export async function extractProfile(
   transcript: Turn[],
   model?: string,
 ): Promise<ExtractionResult> {
+  const derive = derivesCategories(version);
+  const instructions = EXTRACTION_INSTRUCTIONS.replace(
+    "__CATEGORY_BLOCK__",
+    derive ? NO_CATEGORY_BLOCK : CATEGORY_BLOCK,
+  );
+
   const result = await completeJson({
     role: "agent",
     model,
     label: `extract:${version}`,
-    system: `${loadPolicy(version)}\n\n${EXTRACTION_INSTRUCTIONS}`,
+    system: `${loadPolicy(version)}\n\n${instructions}`,
     messages: [
       {
         role: "user",
         content: `Here is the full transcript.\n\n${renderTranscript(transcript)}`,
       },
     ],
-    format: extractedProfileSchema,
+    format: derive ? extractedProfileSchemaV2 : extractedProfileSchema,
     maxTokens: 16000,
   });
 
@@ -245,7 +281,7 @@ export async function extractProfile(
     };
   }
 
-  const parsed = parseExtraction(result.value);
+  const parsed = parseExtraction(result.value, { deriveCategories: derive });
   if (!parsed.ok) {
     return {
       profile: null,
@@ -257,7 +293,7 @@ export async function extractProfile(
 
   const problems = profileInvariants(parsed.profile);
   return {
-    profile: finaliseProfile(parsed.profile),
+    profile: finaliseProfile(parsed.profile, { deriveCategories: derive }),
     // An invariant breach is a contract violation, so the run is INVALID even
     // though the JSON parsed. Reported separately from a schema rejection.
     error: problems.length > 0 ? `invariant: ${problems.join("; ")}` : null,

@@ -224,6 +224,16 @@ export const extractedProfileSchema = z.object({
     .describe("One entry minimum for each field that is not null."),
 });
 
+/**
+ * The v2 extraction. Identical, minus the category list the model no longer
+ * chooses. Kept as a derivation of the v1 schema so the two can never drift
+ * apart on any other field — which is what would make a v1/v2 comparison
+ * meaningless.
+ */
+export const extractedProfileSchemaV2 = extractedProfileSchema.omit({
+  eligible_product_categories: true,
+});
+
 export type ExtractedProfile = z.infer<typeof extractedProfileSchema>;
 export type Contradiction = z.infer<typeof contradictionSchema>;
 export type Evidence = z.infer<typeof evidenceSchema>;
@@ -237,7 +247,22 @@ export type Evidence = z.infer<typeof evidenceSchema>;
  */
 export function parseExtraction(
   raw: unknown,
+  opts: { deriveCategories?: boolean } = {},
 ): { ok: true; profile: ExtractedProfile } | { ok: false; error: string } {
+  if (opts.deriveCategories) {
+    const v2 = extractedProfileSchemaV2.safeParse(raw);
+    if (v2.success) {
+      // Filled in by finaliseProfile once the band is known. The model never
+      // sees this field and cannot put anything in it.
+      return { ok: true, profile: { ...v2.data, eligible_product_categories: [] } };
+    }
+    const issues = v2.error.issues
+      .slice(0, 4)
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+      .join("; ");
+    return { ok: false, error: `failed schema validation — ${issues}` };
+  }
+
   const parsed = extractedProfileSchema.safeParse(raw);
   if (parsed.success) return { ok: true, profile: parsed.data };
   const issues = parsed.error.issues
@@ -318,6 +343,24 @@ export const CATEGORY_BAND: Record<
   private_markets: 5,
   leveraged_or_derivative: 5,
 };
+
+/**
+ * Every category a client in this band may be offered.
+ *
+ * From v2 the model no longer emits a category list at all: it is derived here
+ * from the computed band. A list the model chooses can contradict the band the
+ * policy computes — fifteen of twenty v1 runs did exactly that — and there is
+ * nothing a language model brings to "which rows of a table are <= N".
+ *
+ * A null band derives an empty list. Eligibility cannot be asserted for a
+ * client whose band could not be computed.
+ */
+export function eligibleCategories(
+  band: RiskBandValue | null,
+): (typeof PRODUCT_CATEGORIES)[number][] {
+  if (band === null) return [];
+  return PRODUCT_CATEGORIES.filter((c) => CATEGORY_BAND[c] <= band);
+}
 
 export interface CategoryViolation {
   category: string;
@@ -458,7 +501,10 @@ export interface SuitabilityProfile extends ExtractedProfile {
   confidence: number;
 }
 
-export function finaliseProfile(p: ExtractedProfile): SuitabilityProfile {
+export function finaliseProfile(
+  p: ExtractedProfile,
+  opts: { deriveCategories?: boolean } = {},
+): SuitabilityProfile {
   const policy = computeRiskBand({
     stated_risk_tolerance: p.stated_risk_tolerance,
     behavioural_loss_tolerance: p.behavioural_loss_tolerance,
@@ -467,6 +513,9 @@ export function finaliseProfile(p: ExtractedProfile): SuitabilityProfile {
   });
   return {
     ...p,
+    eligible_product_categories: opts.deriveCategories
+      ? eligibleCategories(policy.band)
+      : p.eligible_product_categories,
     risk_band: policy.band,
     binding: policy.binding,
     caps: policy.caps,

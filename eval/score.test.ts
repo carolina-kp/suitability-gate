@@ -19,6 +19,9 @@ import {
   BAND_LABELS,
   CATEGORY_BAND,
   categoryViolations,
+  eligibleCategories,
+  extractedProfileSchema,
+  extractedProfileSchemaV2,
   PRODUCT_CATEGORIES,
   type ExtractedProfile,
   type JudgeExtraction,
@@ -374,4 +377,68 @@ test("an empty list is always within band, including with no band", () => {
     "band_categories",
   );
   assert.equal(c.passed, true);
+});
+
+// --- v2: categories derived in code, not chosen by the model ----------------
+
+test("derived categories are exactly the rows at or below the band", () => {
+  assert.deepEqual(eligibleCategories(1), ["cash_and_equivalents", "money_market"]);
+  assert.deepEqual(eligibleCategories(2), [
+    "cash_and_equivalents",
+    "money_market",
+    "government_bonds",
+    "investment_grade_bonds",
+    "multi_asset_conservative",
+  ]);
+  assert.equal(eligibleCategories(5).length, PRODUCT_CATEGORIES.length);
+});
+
+test("a null band derives no categories at all", () => {
+  assert.deepEqual(eligibleCategories(null), []);
+});
+
+test("a derived list can never violate its own band", () => {
+  // The v2 change makes band_categories a regression test on the derivation
+  // rather than a test of the model. It must be unfailable by construction.
+  for (const band of [1, 2, 3, 4, 5] as const) {
+    assert.deepEqual(categoryViolations(eligibleCategories(band), band), []);
+  }
+  assert.deepEqual(categoryViolations(eligibleCategories(null), null), []);
+});
+
+test("deriving replaces whatever the model put in the field", () => {
+  const p = finaliseProfile(
+    {
+      outcome: "complete",
+      primary_goal: "flat deposit",
+      horizon_years: 1.5,
+      monthly_amount: 900,
+      stated_risk_tolerance: 4,
+      behavioural_loss_tolerance: 4,
+      proposed_risk_band: 4,
+      capacity_for_loss: "medium",
+      knowledge_level: "basic",
+      eligible_product_categories: ["leveraged_or_derivative", "global_equity"],
+      vulnerability_flag: false,
+      handoff_recommended: false,
+      contradictions: [],
+      evidence: [],
+    },
+    { deriveCategories: true },
+  );
+  assert.equal(p.risk_band, 1);
+  assert.deepEqual(p.eligible_product_categories, [
+    "cash_and_equivalents",
+    "money_market",
+  ]);
+});
+
+test("the v2 extraction schema differs from v1 in exactly one field", () => {
+  const v1 = Object.keys(extractedProfileSchema.shape);
+  const v2 = Object.keys(extractedProfileSchemaV2.shape);
+  assert.deepEqual(
+    v1.filter((k) => !v2.includes(k)),
+    ["eligible_product_categories"],
+  );
+  assert.deepEqual(v2.filter((k) => !v1.includes(k)), []);
 });
