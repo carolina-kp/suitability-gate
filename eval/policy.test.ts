@@ -196,7 +196,7 @@ test("finaliseProfile records divergence without overwriting the proposal", () =
 // supposed to encode. If it does, every band number on the /gate screen is
 // measuring the fixture author's arithmetic rather than the agent.
 
-import { loadPersonas } from "./run_eval";
+import { loadPersonas } from "./personas";
 import { CONTRADICTION_FIELDS, EVIDENCE_FIELDS } from "../src/lib/schema";
 
 test("there are twenty personas, six of them adversarial", () => {

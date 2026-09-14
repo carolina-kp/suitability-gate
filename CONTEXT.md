@@ -44,6 +44,61 @@ Both tables are my invention, chosen to be defensible rather than authoritative.
 They are asserted in `eval/policy.test.ts`, so changing a number here fails the
 test suite immediately instead of silently shifting twenty runs.
 
+## What each band may be offered
+
+The band constrains the conversation, not just the file. Two tables below make
+that checkable.
+
+### Product categories
+
+The lowest band at which each category becomes eligible. A client in band N may
+be offered any category at N or below; a profile listing a category **above**
+its own computed band is a failure, scored as `band_categories`.
+
+| Band | Categories that become eligible |
+|---|---|
+| 1 | cash and equivalents, money market |
+| 2 | government bonds, investment grade bonds, multi-asset conservative |
+| 3 | multi-asset balanced |
+| 4 | high yield bonds, multi-asset growth, developed market equity, global equity, listed property, structured products |
+| 5 | emerging market equity, commodities, private markets, leveraged or derivative |
+
+Sixteen categories, asserted in `eval/score.test.ts`. Two calls worth stating
+because a firm might make them differently: government bonds sit at 2 rather
+than 1 because the category says nothing about duration and a long-dated bond
+fund is not capital preservation; structured products sit at 4 rather than 5
+because the category spans capital-protected notes as well as aggressive ones.
+
+A **null band with a non-empty category list is also a violation**. Eligibility
+cannot be asserted for a client whose band could not be computed — that is the
+Tomasz case, where a client who would not answer must not leave with a product
+list.
+
+### Band vocabulary
+
+What each band is called in words, used when checking that the level an agent
+stated to a client matches the one policy computed:
+
+| Band | Words |
+|---|---|
+| 1 | capital preservation, no risk to capital |
+| 2 | cautious, conservative, defensive |
+| 3 | moderate, balanced, medium |
+| 4 | growth, adventurous, higher risk |
+| 5 | maximum growth, aggressive, full equity risk |
+
+This mapping is the weakest assumption in the file, and the one most worth
+arguing with: "moderate" is doing real work as band 3, and a firm whose house
+scale runs 1-7, or whose "balanced" means something else, would score
+differently. It is written down here rather than left inside a prompt precisely
+so that the argument is possible.
+
+The judge is given this table and asked only **what the agent said** — never
+whether it was consistent, and never shown the computed band. The comparison
+happens in code. Repeating a client's own self-rating back to them ("you said
+you're a four out of five") is explicitly not a communicated band; assigning
+one ("I'd put you in a moderate risk band") is.
+
 ### Why the model does not compute this
 
 The model emits `proposed_risk_band` — its own honest read — and the code
@@ -115,6 +170,22 @@ Quietly shrinking a denominator is a way of making a rate look better, so the
 count is on the screen next to the rate it affects, with the personas named.
 Tomasz's null band is *not* one of these: there the right answer is "no band",
 and producing one is the failure, so it stays in the denominator.
+
+**A correct profile can sit next to an incorrect conversation.** This is why
+two of the seven criteria read the transcript rather than the file. The band a
+client is *told* and the categories they are *offered* are both things the
+extraction schema is incapable of constraining — the profile can be entirely
+right while the client walks away with a different number in their head. Both
+are now scored, and both are disqualifying.
+
+**Component readings are reported, not gated.** `capacity_for_loss` and
+`knowledge_level` are compared against ground truth and shown as their own
+rates, never as pass/fail. A band can be right for the wrong reason: Ana's
+capacity was read as medium against a ground truth of low, and the band was
+still correct because the horizon ceiling bound it. The screen counts that case
+explicitly — **band correct, component incorrect** — because on a larger sample
+it is the number that says whether band accuracy is real or whether the
+ceilings are quietly doing all the work.
 
 **The product-name boundary is enforced by validation, not by the schema.** The
 structured-output format constrains types and required keys, not value sets, so

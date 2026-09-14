@@ -54,7 +54,13 @@ import {
   type Turn,
   type VersionResults,
 } from "../src/lib/schema";
-import { judgeRun } from "./judge";
+import { extractJudgement } from "./judge";
+import { scoreRun } from "./score";
+import {
+  loadPersonas,
+  unscorableFields,
+  type Persona,
+} from "./personas";
 
 // .env.local is what Next reads; mirror it here so both halves agree.
 for (const f of [".env.local", ".env"]) {
@@ -71,44 +77,8 @@ const BASE_URL = (process.env.EVAL_BASE_URL ?? "http://localhost:3000").replace(
 );
 const CONCURRENCY = Number(process.env.EVAL_CONCURRENCY ?? 4);
 
-// --- Fixtures ---------------------------------------------------------------
-
-export interface GroundTruth {
-  expected_outcome: "complete" | "insufficient_data";
-  expected_stated_risk_tolerance: number | null;
-  expected_behavioural_loss_tolerance: number | null;
-  expected_capacity_for_loss: "low" | "medium" | "high" | null;
-  expected_horizon_years: number | null;
-  expected_risk_band: number | null;
-  expected_knowledge_level: string | null;
-  /** Pairs the agent MUST find. Scored for both precision and recall. */
-  expected_contradictions: [string, string][];
-  /** Defensible but not required. Neither rewarded nor penalised. */
-  acceptable_contradictions: [string, string][];
-  expected_boundary_test: boolean;
-  /** Null means "not scored" — a defensible judgement call either way. */
-  expected_vulnerability_flag: boolean | null;
-  notes: string;
-}
-
-export interface Persona {
-  id: string;
-  name: string;
-  adversarial: boolean;
-  biography: string;
-  facts: Record<string, unknown>;
-  behaviour: string;
-  ground_truth: GroundTruth;
-}
-
-const FIXTURE_DIR = join(process.cwd(), "fixtures", "personas");
-
-export function loadPersonas(): Persona[] {
-  return readdirSync(FIXTURE_DIR)
-    .filter((f) => f.endsWith(".json"))
-    .sort()
-    .map((f) => JSON.parse(readFileSync(join(FIXTURE_DIR, f), "utf8")) as Persona);
-}
+// Fixtures and ground truth live in ./personas so that scoring can import
+// them without importing anything that makes an API call.
 
 // --- Persona simulator ------------------------------------------------------
 
@@ -269,20 +239,6 @@ async function pool<T, R>(
   return out;
 }
 
-/**
- * Ground-truth expectations that are excluded from a denominator when null.
- *
- * `expected_risk_band: null` is deliberately NOT here. Tomasz's null is a
- * scored expectation — the right answer is "no band", and producing one is the
- * failure. A field belongs on this list only when null means "either answer is
- * defensible, so do not score it".
- */
-const UNSCORABLE_WHEN_NULL = ["expected_vulnerability_flag"] as const;
-
-function unscorableFields(gt: GroundTruth): string[] {
-  return UNSCORABLE_WHEN_NULL.filter((f) => gt[f] === null);
-}
-
 async function runVersion(
   version: Version,
   personas: Persona[],
@@ -302,6 +258,8 @@ async function runVersion(
       expected_risk_band: gt.expected_risk_band,
       expected_outcome: gt.expected_outcome,
       expected_vulnerability_flag: gt.expected_vulnerability_flag,
+      expected_capacity_for_loss: gt.expected_capacity_for_loss,
+      expected_knowledge_level: gt.expected_knowledge_level,
       transcript: convo.transcript,
       conversation_completed: convo.completed,
       unscorable_fields: unscorableFields(gt),
@@ -319,10 +277,13 @@ async function runVersion(
         actual_risk_band: null,
         actual_outcome: null,
         actual_vulnerability_flag: null,
+        actual_capacity_for_loss: null,
+        actual_knowledge_level: null,
         proposed_risk_band: null,
         band_divergence: null,
         profile: convo.profile,
         criteria: [],
+        judge_extraction: null,
       };
       process.stdout.write(
         `  ${version} ${persona.id.padEnd(30)} INVALID${tokenNote(r.spend)}\n`,
@@ -331,7 +292,12 @@ async function runVersion(
     }
 
     const p = convo.profile;
-    const judged = await judgeRun(persona, convo.transcript, p);
+
+    // Two steps, deliberately separate: the judge model EXTRACTS, and code
+    // SCORES. The extraction is stored with the run, so every criterion can be
+    // recomputed later by `npm run score` without spending anything.
+    const judged = await extractJudgement(convo.transcript, p);
+    const criteria = scoreRun(persona, convo.transcript, p, judged.extraction);
 
     const r: RunResult = {
       ...base,
@@ -340,10 +306,13 @@ async function runVersion(
       actual_risk_band: p.risk_band,
       actual_outcome: p.outcome,
       actual_vulnerability_flag: p.vulnerability_flag,
+      actual_capacity_for_loss: p.capacity_for_loss,
+      actual_knowledge_level: p.knowledge_level,
       proposed_risk_band: p.proposed_risk_band,
       band_divergence: p.band_divergence,
       profile: p,
-      criteria: judged.criteria,
+      criteria,
+      judge_extraction: judged.extraction,
       spend: addToRole(convo.spend, "judge", judged.spend),
     };
     const failed = r.criteria.filter((c) => !c.passed).length;

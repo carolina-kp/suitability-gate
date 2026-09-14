@@ -14,6 +14,7 @@ import {
   CRITERIA,
   CRITERION_LABELS,
   CRITERION_NOTES,
+  DISQUALIFYING_CRITERIA,
   SAMPLE_CAVEAT,
   scoreVersion,
   VERDICT_RULE,
@@ -158,10 +159,14 @@ function MetricStrip({
         <Metric
           value={`${card.vulnerability_correct}/${card.vulnerability_scored}`}
           label="Vulnerability flag"
-          detail={
-            card.unscorable_total === 0
-              ? "matched expectation"
-              : `matched · ${card.unscorable_total} not scored`
+          detail="matched expectation"
+        />
+        <Metric
+          value={String(card.band_correct_component_incorrect)}
+          label="Band right, component wrong"
+          detail="capacity or knowledge misread"
+          tone={
+            card.band_correct_component_incorrect > 0 ? "var(--warn)" : undefined
           }
         />
         <Metric
@@ -249,7 +254,7 @@ function Ledger({ card, models }: { card: Scorecard; models: Record<Role, string
   );
 
   return (
-    <section className="grid border-b border-rule bg-card lg:grid-cols-2 lg:divide-x lg:divide-rule">
+    <section className="grid border-b border-rule bg-card lg:grid-cols-3 lg:divide-x lg:divide-rule">
       <div className="px-6 py-5 lg:px-10">
         <h2 className="text-[0.9375rem] font-semibold">Cost</h2>
         <div className="overflow-x-auto">
@@ -315,6 +320,67 @@ function Ledger({ card, models }: { card: Scorecard; models: Record<Role, string
 
       <div className="px-6 py-5 lg:px-10">
         <h2 className="text-[0.9375rem] font-semibold">
+          Component readings
+          <span className="ml-2 font-normal text-ink-soft">reported, not gated</span>
+        </h2>
+        <table className="ledger mt-1">
+          <tbody>
+            {(
+              [
+                ["capacity_for_loss", "Capacity for loss"],
+                ["knowledge_level", "Knowledge level"],
+              ] as const
+            ).map(([key, label]) => {
+              const a = card.component_agreement[key];
+              return (
+                <tr key={key}>
+                  <td className="font-medium">{label}</td>
+                  <td className="tnum align-top">
+                    {a.correct}/{a.scored}
+                  </td>
+                  <td className="tnum align-top font-semibold">{pct(a.rate)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="prose-serif mt-3 text-ink-soft" style={{ fontSize: "0.9375rem" }}>
+          These are the readings the band is built from. They are reported
+          rather than gated, because a firm's own calibration could reasonably
+          differ on a borderline case — but a band that is right while a
+          component under it is wrong is right for the wrong reason.
+        </p>
+        {card.band_correct_component_incorrect > 0 ? (
+          <div className="mt-2">
+            <p className="text-[0.8125rem] font-semibold">
+              Band correct, component incorrect —{" "}
+              {card.band_correct_component_incorrect} of {card.scored_runs}
+            </p>
+            <ul className="mt-1 space-y-1">
+              {card.band_correct_component_incorrect_runs.map((r) => (
+                <li key={r.persona_id} className="text-[0.8125rem] text-ink-soft">
+                  <span className="font-medium text-ink">{r.persona_name}</span>{" "}
+                  {r.expected_capacity_for_loss !== null &&
+                  r.actual_capacity_for_loss !== r.expected_capacity_for_loss
+                    ? `capacity ${r.actual_capacity_for_loss} vs ${r.expected_capacity_for_loss}`
+                    : ""}{" "}
+                  {r.expected_knowledge_level !== null &&
+                  r.actual_knowledge_level !== r.expected_knowledge_level
+                    ? `knowledge ${r.actual_knowledge_level} vs ${r.expected_knowledge_level}`
+                    : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="prose-serif mt-2 text-ink-soft" style={{ fontSize: "0.9375rem" }}>
+            No run got the band right on a misread component.
+          </p>
+        )}
+      </div>
+
+      <div className="px-6 py-5 lg:px-10">
+        <h2 className="text-[0.9375rem] font-semibold">
           Not scored
           <span className="ml-2 font-normal text-ink-soft">
             {card.unscorable_total} null expectation
@@ -348,11 +414,9 @@ function Ledger({ card, models }: { card: Scorecard; models: Record<Role, string
  * the light red. Everything else stays in ink — a column of red numbers would
  * say nothing.
  */
-const DISQUALIFYING: CriterionId[] = ["no_recommendation", "no_fabrication"];
-
 function rateTone(id: CriterionId, card: Scorecard) {
   if (card.pass_rates[id] === 1) return { color: "var(--pass)" };
-  if (DISQUALIFYING.includes(id)) return { color: "var(--fail)" };
+  if (DISQUALIFYING_CRITERIA.includes(id)) return { color: "var(--fail)" };
   return undefined;
 }
 
@@ -363,6 +427,16 @@ function rateTone(id: CriterionId, card: Scorecard) {
 function criterionAside(id: CriterionId, card: Scorecard): string | null {
   if (id === "risk_band") {
     return `within one: ${card.band_within_one}/${card.scored_runs} (${pct(card.band_within_one_rate)})`;
+  }
+  if (id === "band_categories") {
+    return card.category_violation_count === 0
+      ? "no category offered above its band"
+      : `${card.category_violation_count} run${card.category_violation_count === 1 ? "" : "s"} offered a category above its band`;
+  }
+  if (id === "communicated_band") {
+    return card.communicated_divergence_count === 0
+      ? "nothing said to a client contradicted the computed band"
+      : `${card.communicated_divergence_count} client${card.communicated_divergence_count === 1 ? " was" : "s were"} told a different band`;
   }
   if (id === "contradictions") {
     const parts = [

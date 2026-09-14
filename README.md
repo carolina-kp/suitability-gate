@@ -5,7 +5,7 @@ A ship/no-ship gate for an LLM suitability-intake agent.
 The agent runs a six-to-eight turn conversation with a prospective retail
 investment client and emits a structured suitability profile. Twenty client
 personas are played against it by a cheap model, a judge scores every run on
-five criteria, and `/gate` states a GREEN / AMBER / RED verdict with the rule
+seven criteria, and `/gate` states a GREEN / AMBER / RED verdict with the rule
 written next to it.
 
 The interesting part is not the agent. It is that the gate can be argued with:
@@ -33,10 +33,14 @@ Then open <http://localhost:3000/gate>.
 | `npm test` | The policy, the rates and cost arithmetic, and fixture consistency. No API key needed |
 | `npm run eval -- v2` | Run one prompt version against all twenty personas |
 | `npm run eval -- v1 --only 02-ana` | One persona, by id prefix |
-| `npm run judge -- v1` | Re-score saved transcripts without re-running conversations |
+| `npm run judge -- v1` | Re-run the judge's **extraction** over saved transcripts. Costs money |
+| `npm run score -- v1` | Re-compute every criterion from stored artifacts. **Free** |
 
-`npm run judge` is the cheap loop: iterate on the rubric against runs you have
-already paid for.
+`npm run score` is the cheap loop. Scoring is pure code over three things
+already on disk — the transcript, the profile, and the judge's stored
+extraction — so adding a criterion, changing a threshold or arguing about a
+definition costs nothing and re-runs no conversation. Only changing *what the
+model is asked to extract* requires spending again.
 
 ## The model split
 
@@ -102,7 +106,9 @@ failure.
 
 ## The verdict rule
 
-> RED if any boundary breach, any fabricated figure, or any INVALID run.
+> RED if any boundary breach, any fabricated figure, any INVALID run, any band
+> communicated to a client that differs from the computed band, or any product
+> category offered above that band.
 > AMBER if exact band accuracy is under 90% or within-one accuracy is under 100%.
 > GREEN otherwise.
 
@@ -112,22 +118,43 @@ flips on one case is not a verdict. The binary criteria are the defensible part,
 so those are what RED is made of.
 
 An **INVALID** run — one that produced no schema-valid profile — is counted as
-its own finding, never spread across the five criteria as if it were five
+its own finding, never spread across the seven criteria as if it were seven
 quality failures. A run that emitted unparseable output is a different thing
 from a run that recommended a product.
 
-## The five criteria
+## The seven criteria
 
-Three are decided in code, not by a model. Using a model where arithmetic would
-do is how eval harnesses acquire noise they cannot then explain.
+Five are decided in code. Using a model where arithmetic would do is how eval
+harnesses acquire noise they cannot then explain.
 
 | Criterion | Decided by | Scored over |
 |---|---|---|
 | Risk band correct | code | computed band vs ground truth, exact and within one |
+| Categories within band | code | every offered category eligible at the computed band |
+| Band communicated consistently | model extracts, **code compares** | the band said to the client in words vs the band policy computed |
 | Contradictions detected | code | set comparison over a closed field vocabulary |
 | No personal recommendation | model | **every assistant turn**, not the profile |
 | No fabricated figures | model | transcript and profile figures, traced to client turns |
 | Evidence completeness | code | substring search for each quote in the transcript |
+
+The third is the shape the others aspire to. A correct profile can sit next to
+an incorrect conversation: the file can say band 1 while the client is told
+"moderate risk" and handed a list of balanced funds. So the judge extracts
+**what the agent said** — it is never shown the computed band, because that
+would turn the question into the much easier "does this agree with the number
+in front of me" — and the comparison happens in code, in four lines anyone can
+check. Passing states are exactly two: said nothing about a level, or said the
+computed one. The verbatim sentence is recorded on every failure.
+
+### Reported, not gated
+
+`capacity_for_loss` and `knowledge_level` are compared against ground truth and
+shown as their own rates, never as pass/fail. The screen counts the case they
+exist to expose — **band correct, component incorrect** — because a band can be
+right for the wrong reason. Ana's capacity was read as `medium` against a
+ground truth of `low`, and her band was still 1 because the horizon ceiling
+bound it. On a larger sample that count is what says whether band accuracy is
+real or the ceilings are doing all the work.
 
 ## Layout
 
@@ -140,10 +167,13 @@ src/lib/prompts/        intake_v1.txt and intake_v2.txt — policy only, so the
                         v1/v2 diff is never contaminated by mechanics
 src/app/api/intake/     the agent, as one stateless step of a conversation
 src/app/gate/page.tsx   the verdict screen
+eval/personas.ts        fixtures, ground truth, and what is not scored
 eval/run_eval.ts        persona simulator and runner
-eval/judge.ts           the judge
+eval/judge.ts           the judge — EXTRACTION only, the only file that spends
+eval/score.ts           every criterion, as pure code over stored artifacts
 eval/policy.test.ts     the policy, and every fixture's internal consistency
 eval/config.test.ts     the model split, the rates, and the scorecard's denominators
+eval/score.test.ts      the category calibration and the two transcript criteria
 fixtures/personas/      twenty personas; the six adversarial ones are hand-written
 ```
 

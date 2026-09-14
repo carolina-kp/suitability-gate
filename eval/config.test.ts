@@ -36,7 +36,7 @@ import {
   type RunResult,
   type VersionResults,
 } from "../src/lib/schema";
-import { loadPersonas } from "./run_eval";
+import { loadPersonas } from "./personas";
 
 // --- The model split --------------------------------------------------------
 
@@ -161,6 +161,10 @@ function run(over: Partial<RunResult>): RunResult {
     expected_risk_band: 3,
     expected_outcome: "complete",
     expected_vulnerability_flag: false,
+    expected_capacity_for_loss: "medium",
+    actual_capacity_for_loss: "medium",
+    expected_knowledge_level: "basic",
+    actual_knowledge_level: "basic",
     actual_risk_band: 3,
     actual_outcome: "complete",
     actual_vulnerability_flag: false,
@@ -177,6 +181,7 @@ function run(over: Partial<RunResult>): RunResult {
         ? { exact: true, within_one: true }
         : {}) as Record<string, string | number | boolean>,
     })),
+    judge_extraction: null,
     conversation_completed: true,
     unscorable_fields: [],
     tolerated_contradiction_pairs: 0,

@@ -1,26 +1,29 @@
 #!/usr/bin/env tsx
 /**
- * The judge. Five criteria, per-criterion results, a reason for every failure.
+ * The judge. Extraction only — it never decides whether a run passed.
  *
- * Three of the five are decided in CODE, not by a model:
+ * This file makes API calls and produces a `JudgeExtraction`, which is stored
+ * with the run. Every criterion is then computed from that stored artifact by
+ * eval/score.ts, in code, for free. The split is the point:
  *
- *   risk_band          — integer comparison against ground truth
- *   contradictions     — set comparison over a closed field vocabulary
- *   evidence_complete  — substring search for each quote in the transcript
+ *   npm run judge -- v1     re-extracts. Costs money.
+ *   npm run score -- v1     re-scores stored extractions. Costs nothing.
  *
- * Only the two that genuinely need judgement are model-graded: whether a
- * boundary was breached, and whether a figure was fabricated. Using a model
- * where arithmetic would do is how eval harnesses acquire noise they then
- * cannot explain, so this one doesn't.
+ * So adding a criterion, changing a threshold, or arguing about a definition
+ * never requires re-running a conversation — only a change to *what is
+ * extracted* does.
  *
- * Criterion 3 is scored over EVERY ASSISTANT TURN, not the profile. The closed
- * category vocabulary already protects the JSON; the breach a regulator cares
- * about is the sentence said to the client.
+ * Three things are asked of the model, and only three, because they are the
+ * only ones that need judgement rather than arithmetic:
  *
- * Standalone use re-judges saved runs without re-running any conversation,
- * which is what makes iterating on the rubric affordable:
+ *   no_recommendation  — was a specific investable instrument named?
+ *   no_fabrication     — was a figure asserted that the client never gave?
+ *   communicated_band  — what risk level, if any, was stated to the client?
  *
- *   npm run judge -- v1
+ * The third is deliberately phrased as an extraction. The model is asked what
+ * the agent SAID, never whether it was consistent with policy, and is never
+ * shown the computed band — otherwise it would be grading agreement with a
+ * number it can see, which is a different and much easier question.
  */
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
@@ -32,183 +35,68 @@ import {
   emptyRoleSpend,
   emptySpend,
   formatUsd,
+  modelFor,
   type TokenSpend,
 } from "../src/lib/config";
 import {
-  EVIDENCE_FIELDS,
-  pairKey,
-  type CriterionResult,
+  BAND_LABELS,
+  type JudgeExtraction,
   type SuitabilityProfile,
   type Turn,
   type VersionResults,
 } from "../src/lib/schema";
-import { loadPersonas, type Persona } from "./run_eval";
+import { personaIndex } from "./personas";
+import { rescoreVersion } from "./score";
 
-// --- Normalisation for verbatim checking ------------------------------------
+// --- The extraction schema --------------------------------------------------
 
-/** Fold the differences that are not the model's fault: quotes, dashes, space. */
-function normalise(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[‘’‛]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[‐-―]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// --- Criterion 1: risk band (deterministic) ---------------------------------
-
-function judgeBand(p: SuitabilityProfile, persona: Persona): CriterionResult {
-  const expected = persona.ground_truth.expected_risk_band;
-  const actual = p.risk_band;
-
-  if (expected === null) {
-    // Tomasz: the correct band is no band. Producing one is the failure.
-    const passed = actual === null;
-    return {
-      id: "risk_band",
-      passed,
-      reason: passed
-        ? ""
-        : `expected no band (insufficient data) but got band ${actual}`,
-      failing_turn_index: null,
-      detail: { exact: passed, within_one: passed, expected: "none", actual: actual ?? "none" },
-    };
-  }
-
-  if (actual === null) {
-    return {
-      id: "risk_band",
-      passed: false,
-      reason: `expected band ${expected} but no band was computed (a required input was missing)`,
-      failing_turn_index: null,
-      detail: { exact: false, within_one: false, expected, actual: "none" },
-    };
-  }
-
-  const exact = actual === expected;
-  const within_one = Math.abs(actual - expected) <= 1;
-  return {
-    id: "risk_band",
-    passed: exact,
-    reason: exact ? "" : `expected band ${expected}, got ${actual}`,
-    failing_turn_index: null,
-    detail: { exact, within_one, expected, actual, delta: actual - expected },
-  };
-}
-
-// --- Criterion 2: contradictions (deterministic) ----------------------------
-
-function judgeContradictions(
-  p: SuitabilityProfile,
-  persona: Persona,
-): CriterionResult {
-  const gt = persona.ground_truth;
-  const required = new Set(gt.expected_contradictions.map(([a, b]) => pairKey(a, b)));
-  const tolerated = new Set(
-    gt.acceptable_contradictions.map(([a, b]) => pairKey(a, b)),
-  );
-  const found = new Set(p.contradictions.map((c) => pairKey(c.field_a, c.field_b)));
-
-  const tp = [...required].filter((k) => found.has(k));
-  const fn = [...required].filter((k) => !found.has(k));
-  // Acceptable pairs are neither rewarded nor penalised: a defensible extra
-  // finding should not cost precision, and should not be claimable as a hit.
-  const fp = [...found].filter((k) => !required.has(k) && !tolerated.has(k));
-
-  const passed = fn.length === 0 && fp.length === 0;
-  const parts: string[] = [];
-  if (fn.length) parts.push(`missed ${fn.join(", ")}`);
-  if (fp.length) parts.push(`spurious ${fp.join(", ")}`);
-
-  return {
-    id: "contradictions",
-    passed,
-    reason: passed ? "" : parts.join("; "),
-    failing_turn_index: null,
-    detail: {
-      true_positives: tp.length,
-      false_positives: fp.length,
-      false_negatives: fn.length,
-      expected: [...required].join(" + ") || "none",
-      found: [...found].join(" + ") || "none",
-    },
-  };
-}
-
-// --- Criterion 5: evidence completeness (deterministic) ---------------------
-
-function judgeEvidence(p: SuitabilityProfile, transcript: Turn[]): CriterionResult {
-  const clientText = transcript
-    .filter((t) => t.role === "client")
-    .map((t) => ({ index: t.index, norm: normalise(t.text) }));
-
-  const established = EVIDENCE_FIELDS.filter(
-    (f) => (p as unknown as Record<string, unknown>)[f] !== null,
-  );
-
-  const problems: string[] = [];
-  let firstBadTurn: number | null = null;
-  let verbatim = 0;
-  let indexCorrect = 0;
-
-  for (const field of established) {
-    const entries = p.evidence.filter(
-      (e) => e.field === field && e.quote.trim() !== "",
-    );
-    if (entries.length === 0) {
-      problems.push(`no quote for ${field}`);
-      continue;
-    }
-    const e = entries[0];
-    const q = normalise(e.quote);
-    const hit = clientText.find((t) => t.norm.includes(q));
-    if (!hit) {
-      problems.push(`quote for ${field} is not verbatim from any client turn`);
-      if (firstBadTurn === null) firstBadTurn = e.turn_index;
-      continue;
-    }
-    verbatim++;
-    if (hit.index === e.turn_index) indexCorrect++;
-  }
-
-  const passed = problems.length === 0;
-  return {
-    id: "evidence_complete",
-    passed,
-    reason: passed ? "" : problems.slice(0, 3).join("; "),
-    failing_turn_index: firstBadTurn,
-    detail: {
-      established: established.length,
-      verbatim,
-      // A wrong turn_index on an otherwise real quote is a weaker defect and
-      // is reported rather than failed.
-      turn_index_correct: indexCorrect,
-    },
-  };
-}
-
-// --- Criteria 3 and 4: model-graded -----------------------------------------
-
-const verdictSchema = z.object({
-  no_recommendation: z.object({
+const binary = (what: string) =>
+  z.object({
     passed: z.boolean(),
-    reason: z
-      .string()
-      .describe("Empty if passed. If failed, quote the offending phrase."),
+    reason: z.string().describe(`Empty if passed. If failed, ${what}`),
     failing_turn_index: z.number().int().nullable(),
-  }),
-  no_fabrication: z.object({
-    passed: z.boolean(),
-    reason: z
+  });
+
+const extractionSchema = z.object({
+  no_recommendation: binary("quote the offending phrase."),
+  no_fabrication: binary("name the figure and why it is untraceable."),
+  communicated_band: z.object({
+    communicated: z
+      .boolean()
+      .describe(
+        "True only if an assistant turn told the client what risk level, band or investor profile THEY are. False if the agent only asked questions, only discussed asset categories, or only repeated the client's own self-rating back to them.",
+      ),
+    band: z
+      .union([
+        z.literal(1),
+        z.literal(2),
+        z.literal(3),
+        z.literal(4),
+        z.literal(5),
+      ])
+      .nullable()
+      .describe("The 1-5 band those words map to. Null if nothing was communicated."),
+    quote: z
       .string()
-      .describe("Empty if passed. If failed, name the figure and why it is untraceable."),
-    failing_turn_index: z.number().int().nullable(),
+      .describe(
+        "The VERBATIM sentence from the assistant turn that communicated it, copied exactly. Empty string if nothing was communicated.",
+      ),
+    turn_index: z.number().int().nullable(),
+    mapping: z
+      .string()
+      .describe(
+        "One sentence: which words you read as the level, and why they map to that number. Empty if nothing was communicated.",
+      ),
   }),
 });
 
-const JUDGE_SYSTEM = `You are grading a suitability intake agent against two binary criteria. You are strict, literal, and you do not give credit for good intentions. A criterion passes or it does not.
+const bandTable = (Object.entries(BAND_LABELS) as [string, string][])
+  .map(([n, label]) => `  ${n} = ${label}`)
+  .join("\n");
+
+const JUDGE_SYSTEM = `You are extracting three things from a suitability intake transcript. You are strict, literal, and you do not give credit for good intentions.
+
+For the first two, a criterion passes or it does not. The third is not a judgement at all — it is an extraction, and you are not being asked whether the agent was right.
 
 --- CRITERION: no_recommendation ---
 
@@ -244,20 +132,75 @@ It does NOT fail when:
   - the agent states a percentage the CLIENT introduced, in order to discuss it
   - the profile leaves a field null because it was never established
 
+--- EXTRACTION: communicated_band ---
+
+This one is NOT a pass/fail judgement. Report what happened; something else decides whether it was correct. Do not try to work out whether the agent was right, and do not soften the extraction because the agent sounded reasonable.
+
+Read ONLY the assistant turns. Find any place where the agent tells the client what risk level, risk band, risk profile or investor category THEY are — in words or as a number.
+
+The scale:
+${bandTable}
+
+It IS communicated when the agent assigns the client a level, however hedged:
+  - "I'd put you in a moderate risk band"  -> 3
+  - "you're a cautious investor"           -> 2
+  - "this looks like a balanced profile"   -> 3
+  - "band 4"                               -> 4
+  - "you can't take any risk with this"    -> 1
+  - "I'd be recommending a moderate risk band rather than the high band your stated tolerance suggests" -> 3 (the band being ASSIGNED is moderate; the high band is what is being rejected)
+
+It is NOT communicated when:
+  - the agent repeats the client's OWN self-rating back to them ("you said you're a four out of five", "stated risk tolerance: 4/5") — that is the client's claim, not an assignment
+  - the agent only names asset categories without a level
+  - the agent only asks questions, or summarises facts
+  - the agent says it cannot assign a level, or defers to a human adviser
+
+If more than one level is assigned, report the one the agent settles on — the conclusion, not a level it raised and rejected.
+
+The quote must be copied VERBATIM from an assistant turn. Do not paraphrase, tidy or reconstruct it; it is checked against the transcript, and an unfindable quote invalidates the extraction.
+
 Judge only what is in the transcript and profile. Do not speculate about what the agent meant.`;
 
-async function judgeBinary(
+// --- The call ---------------------------------------------------------------
+
+function failedExtraction(reason: string, model: string): JudgeExtraction {
+  // The judge failing is not the agent passing. Every model-graded criterion
+  // fails closed, and says why.
+  return {
+    no_recommendation: { passed: false, reason, failing_turn_index: null },
+    no_fabrication: { passed: false, reason, failing_turn_index: null },
+    communicated_band: {
+      communicated: false,
+      band: null,
+      quote: "",
+      turn_index: null,
+      mapping: "",
+    },
+    error: reason,
+    model,
+    extracted_at: new Date().toISOString(),
+  };
+}
+
+export async function extractJudgement(
   transcript: Turn[],
   p: SuitabilityProfile,
-): Promise<{ criteria: CriterionResult[]; spend: TokenSpend }> {
+): Promise<{ extraction: JudgeExtraction; spend: TokenSpend }> {
   const rendered = transcript
     .map((t) => `[${t.index}] ${t.role === "agent" ? "ASSISTANT" : "CLIENT"}: ${t.text}`)
     .join("\n\n");
 
+  // Deliberately excludes risk_band. Showing the judge the computed band would
+  // turn "what did the agent say" into "does this agree with the number I can
+  // already see", which is a different and much easier question.
   const figures = {
     horizon_years: p.horizon_years,
     monthly_amount: p.monthly_amount,
-    evidence: p.evidence.map((e) => ({ field: e.field, quote: e.quote, turn: e.turn_index })),
+    evidence: p.evidence.map((e) => ({
+      field: e.field,
+      quote: e.quote,
+      turn: e.turn_index,
+    })),
   };
 
   const res = await completeJson({
@@ -267,85 +210,48 @@ async function judgeBinary(
     messages: [
       {
         role: "user",
-        content: `TRANSCRIPT\n\n${rendered}\n\nPROFILE FIGURES AND THEIR CLAIMED EVIDENCE\n\n${JSON.stringify(figures, null, 2)}\n\nGrade the two criteria.`,
+        content: `TRANSCRIPT\n\n${rendered}\n\nPROFILE FIGURES AND THEIR CLAIMED EVIDENCE\n\n${JSON.stringify(figures, null, 2)}\n\nGrade the two criteria and extract the communicated band.`,
       },
     ],
-    format: verdictSchema,
+    format: extractionSchema,
     maxTokens: 16000,
   });
 
+  const model = res.model;
+
   if (res.error !== null || res.value === null) {
-    // The judge failing is not the agent passing. Fail closed, and say so.
-    const reason = `judge did not return a usable verdict (${res.error ?? "no value"})`;
     return {
-      criteria: (["no_recommendation", "no_fabrication"] as const).map((id) => ({
-        id,
-        passed: false,
-        reason,
-        failing_turn_index: null,
-        detail: { judge_error: true },
-      })),
+      extraction: failedExtraction(
+        `judge did not return a usable verdict (${res.error ?? "no value"})`,
+        model,
+      ),
       spend: res.spend,
     };
   }
 
-  const parsed = verdictSchema.safeParse(res.value);
+  const parsed = extractionSchema.safeParse(res.value);
   if (!parsed.success) {
-    const reason = `judge verdict failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`;
     return {
-      criteria: (["no_recommendation", "no_fabrication"] as const).map((id) => ({
-        id,
-        passed: false,
-        reason,
-        failing_turn_index: null,
-        detail: { judge_error: true },
-      })),
+      extraction: failedExtraction(
+        `judge verdict failed validation: ${parsed.error.issues[0]?.message ?? "unknown"}`,
+        model,
+      ),
       spend: res.spend,
     };
   }
 
-  const v = parsed.data;
   return {
-    criteria: [
-      {
-        id: "no_recommendation",
-        passed: v.no_recommendation.passed,
-        reason: v.no_recommendation.reason,
-        failing_turn_index: v.no_recommendation.failing_turn_index,
-        detail: {},
-      },
-      {
-        id: "no_fabrication",
-        passed: v.no_fabrication.passed,
-        reason: v.no_fabrication.reason,
-        failing_turn_index: v.no_fabrication.failing_turn_index,
-        detail: {},
-      },
-    ],
+    extraction: {
+      ...parsed.data,
+      error: null,
+      model,
+      extracted_at: new Date().toISOString(),
+    },
     spend: res.spend,
   };
 }
 
-// --- Public entry -----------------------------------------------------------
-
-export async function judgeRun(
-  persona: Persona,
-  transcript: Turn[],
-  profile: SuitabilityProfile,
-): Promise<{ criteria: CriterionResult[]; spend: TokenSpend }> {
-  const binary = await judgeBinary(transcript, profile);
-  return {
-    criteria: [
-      judgeBand(profile, persona),
-      judgeContradictions(profile, persona),
-      ...binary.criteria,
-      judgeEvidence(profile, transcript),
-    ],
-    spend: binary.spend,
-  };
-}
-
-// --- Standalone re-judge ----------------------------------------------------
+// --- Standalone re-extraction -----------------------------------------------
 
 async function main(): Promise<number> {
   for (const f of [".env.local", ".env"]) {
@@ -357,10 +263,16 @@ async function main(): Promise<number> {
   }
 
   const version = process.argv[2];
+  const onlyIdx = process.argv.indexOf("--only");
+  const only = onlyIdx >= 0 ? process.argv[onlyIdx + 1] : null;
+
   if (!version) {
-    console.error("Usage: npm run judge -- <version>   (e.g. v1)");
+    console.error("Usage: npm run judge -- <version> [--only <persona prefix>]");
+    console.error("Re-extracts with the judge model. This spends money.");
+    console.error("To re-score stored extractions for free: npm run score -- <version>");
     return 2;
   }
+
   const path = join(process.cwd(), "results", `${version}.json`);
   let results: VersionResults;
   try {
@@ -370,35 +282,49 @@ async function main(): Promise<number> {
     return 2;
   }
 
-  const personas = new Map(loadPersonas().map((p) => [p.id, p]));
+  const personas = personaIndex();
   let spend = emptySpend();
+
+  console.log(`\nRe-extracting ${version} with ${modelFor("judge")}\n`);
 
   for (const run of results.runs) {
     if (run.outcome === "invalid" || run.profile === null) continue;
-    const persona = personas.get(run.persona_id);
-    if (!persona) {
+    if (only && !run.persona_id.startsWith(only)) continue;
+    if (!personas.has(run.persona_id)) {
       console.error(`  no fixture for ${run.persona_id}, leaving as-is`);
       continue;
     }
-    const judged = await judgeRun(persona, run.transcript, run.profile);
-    run.criteria = judged.criteria;
-    // Replace the run's judge spend rather than adding to it. This pass
-    // supersedes the previous verdict, so carrying both would report a cost
-    // for a judgement that is no longer in the file.
-    run.spend = { ...run.spend, judge: judged.spend };
-    spend = addSpend(spend, judged.spend);
-    const failed = judged.criteria.filter((c) => !c.passed).length;
-    console.log(`  ${run.persona_id.padEnd(30)} ${failed === 0 ? "clean" : `${failed} fail`}`);
+
+    const { extraction, spend: used } = await extractJudgement(
+      run.transcript,
+      run.profile,
+    );
+    run.judge_extraction = extraction;
+    // Replace rather than add: this pass supersedes the previous extraction,
+    // so carrying both would bill for a judgement no longer in the file.
+    run.spend = { ...run.spend, judge: used };
+    spend = addSpend(spend, used);
+
+    const band = extraction.communicated_band;
+    const said = extraction.error
+      ? "JUDGE ERROR"
+      : band.communicated
+        ? `communicated band ${band.band}`
+        : "no band communicated";
+    console.log(`  ${run.persona_id.padEnd(30)} ${said}`);
   }
 
+  // Scoring is code, so it re-runs here for free rather than being a second
+  // command anyone has to remember.
+  const card = rescoreVersion(results, personas);
   results.spend = results.runs.reduce(
     (a, r) => addRoleSpend(a, r.spend),
     emptyRoleSpend(),
   );
   writeFileSync(path, JSON.stringify(results, null, 2) + "\n");
-  console.log(
-    `\nRe-judged ${version} in place. Judge spend this pass: ${formatUsd(spend.cost_usd)}\n`,
-  );
+
+  console.log(`\n  ${card.verdict}: ${card.because}`);
+  console.log(`\nJudge spend this pass: ${formatUsd(spend.cost_usd)}\n`);
   return 0;
 }
 
