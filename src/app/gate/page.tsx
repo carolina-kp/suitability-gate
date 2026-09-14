@@ -60,6 +60,62 @@ function loadLabels(): HumanLabel[] {
 
 const pct = (n: number) => `${(n * 100).toFixed(0)}%`;
 
+/**
+ * The three findings, as presentation copy.
+ *
+ * Deliberately static: these are the arguments worth making out loud, and they
+ * are not derivable from a rate. Every one links to the run that produced it,
+ * so the claim can be opened and read rather than taken on trust.
+ */
+const FINDINGS: {
+  title: string;
+  body: string;
+  version: string;
+  run: string;
+  cite: string;
+}[] = [
+  {
+    title: "Willingness is not capacity, and only one of them is a ceiling",
+    body: "Ana would genuinely hold through a drawdown and says so twice under pressure. min(stated 4, behavioural 4) puts her in band 4. Her deposit completes in eighteen months, and the horizon ceiling forces band 1. Temperament does not move a deadline — which is why the rule is a tested function rather than a paragraph of prompt.",
+    version: "v2",
+    run: "02-ana-short-horizon",
+    cite: "Ana · band 1, bound by horizon",
+  },
+  {
+    title: "A correct file can sit next to an incorrect conversation",
+    body: "Tomasz refuses every question. The v1 profile is exactly right — insufficient data, no band, no products — and he was still told he pointed toward a higher risk band. Nothing that compares profiles to ground truth can see this, because the profile is not wrong. It took a criterion that reads the transcript.",
+    version: "v1",
+    run: "04-tomasz-refuses",
+    cite: "Tomasz · v1 · told a band that was never computed",
+  },
+  {
+    title: "The one remaining failure hides an improvement",
+    body: "Dragan is v2's only INVALID run: the intake is marked complete while the monthly amount is null. Underneath it, v2 elicited his horizon and computed the right band where v1 computed none. Counting INVALID separately is what keeps that visible — folded into the criteria it would have read as several quality failures instead of one contract breach.",
+    version: "v2",
+    run: "06-dragan-distress",
+    cite: "Dragan · v2 · INVALID, band correct underneath",
+  },
+];
+
+/** Disqualifying classes present, and how many runs at least one of them hit. */
+function disqualifying(card: Scorecard) {
+  const classes = DISQUALIFYING_CRITERIA.filter(
+    (id) => card.pass_counts[id] < card.scored_runs,
+  ).length + (card.invalid_runs > 0 ? 1 : 0);
+
+  const runs = new Set<string>();
+  for (const r of card.invalid_run_list) runs.add(r.persona_id);
+  for (const r of card.failing_runs) {
+    if (r.criteria.some((c) => !c.passed && DISQUALIFYING_CRITERIA.includes(c.id))) {
+      runs.add(r.persona_id);
+    }
+  }
+  return { classes, runs: runs.size };
+}
+
+const COUNT_WORD = ["none", "one", "two", "three", "four", "five", "six"];
+const spell = (n: number) => COUNT_WORD[n] ?? String(n);
+
 const TONE: Record<string, { ink: string; wash: string }> = {
   GREEN: { ink: "var(--pass)", wash: "var(--pass-wash)" },
   AMBER: { ink: "var(--warn)", wash: "var(--warn-wash)" },
@@ -91,6 +147,155 @@ function Verdict({ card, version }: { card: Scorecard; version: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The question the whole screen exists to answer, answered in two words.
+ *
+ * The answer is derived from the verdict rather than written down, so the page
+ * cannot keep saying "not yet" after a run that clears it.
+ */
+function Question({ card }: { card: Scorecard }) {
+  const cleared = card.verdict === "GREEN";
+  return (
+    <section className="border-b border-rule bg-card px-6 py-8 lg:px-10 lg:py-10">
+      <div className="max-w-[68ch]">
+        <h2 className="prose-serif text-[1.375rem] leading-snug lg:text-[1.75rem]">
+          Can this intake agent go to retail clients?
+        </h2>
+        <p
+          className="mt-3 text-[3rem] font-extrabold leading-none tracking-[-0.03em] lg:text-[4rem]"
+          style={{ color: cleared ? "var(--pass)" : "var(--fail)" }}
+        >
+          {cleared ? "Yes" : "Not yet"}
+        </p>
+        {cleared ? null : (
+          <p className="prose-serif mt-4 text-ink-soft">
+            <span className="font-semibold text-ink">What would clear it.</span>{" "}
+            An invariant forcing <code>outcome</code> to{" "}
+            <code>insufficient_data</code> when any required field is null.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Compare mode. Two RED headers side by side said the same word twice and hid
+ * the only thing worth seeing, which is the size of the gap between them.
+ */
+function DeltaHero({ a, b }: { a: Scorecard; b: Scorecard }) {
+  const da = disqualifying(a);
+  const db = disqualifying(b);
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+  const chip = (label: string, card: Scorecard) => (
+    <span className="inline-flex items-baseline gap-2">
+      <span className="text-[0.8125rem] font-medium text-ink-soft">{label}</span>
+      <span
+        className="px-1.5 py-0.5 text-[0.6875rem] font-bold tracking-[0.08em]"
+        style={{
+          color: TONE[card.verdict].ink,
+          background: TONE[card.verdict].wash,
+        }}
+      >
+        {card.verdict}
+      </span>
+    </span>
+  );
+
+  return (
+    <div>
+      <div className="verdict-rule" style={{ background: TONE[b.verdict].ink }} />
+      <div className="px-6 py-8 lg:px-10 lg:py-9">
+        <div className="grid max-w-[74ch] gap-x-10 gap-y-5 lg:grid-cols-[auto_1fr]">
+          <div>
+            <p className="mb-1 text-[0.8125rem] text-ink-soft">
+              Intake prompt v1 → v2
+            </p>
+            <p className="verdict-word tnum" style={{ color: "var(--ink)" }}>
+              {da.classes}
+              <span className="px-2 text-ink-faint">→</span>
+              {db.classes}
+            </p>
+            <p className="mt-2 text-[0.8125rem] font-medium text-ink-soft">
+              disqualifying classes
+            </p>
+          </div>
+          <div className="self-end">
+            <p className="prose-serif">
+              <span className="font-semibold">v1 → v2:</span>{" "}
+              {spell(da.classes)} disqualifying{" "}
+              {da.classes === 1 ? "class" : "classes"},{" "}
+              {plural(da.runs, "run")} affected → {spell(db.classes)},{" "}
+              {plural(db.runs, "run")} affected.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+              {chip("v1", a)}
+              {chip("v2", b)}
+            </div>
+          </div>
+        </div>
+
+        <details className="mt-6 max-w-[74ch]">
+          <summary className="cursor-pointer text-[0.8125rem] font-medium text-ink-soft">
+            The rule that decides this
+          </summary>
+          <div className="mt-3 border-l-2 border-rule pl-4">
+            <p className="prose-serif" style={{ fontSize: "0.9375rem" }}>
+              {VERDICT_RULE}
+            </p>
+            <p className="prose-serif mt-3 text-ink-soft" style={{ fontSize: "0.9375rem" }}>
+              <span className="font-semibold text-ink">v1.</span> {a.because}
+            </p>
+            <p className="prose-serif mt-1 text-ink-soft" style={{ fontSize: "0.9375rem" }}>
+              <span className="font-semibold text-ink">v2.</span> {b.because}
+            </p>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
+/** Three arguments, each opening the run that makes it. */
+function Findings({ compare, openId }: { compare: boolean; openId: string | null }) {
+  return (
+    <section className="border-b border-rule bg-card">
+      <h2 className="px-6 pt-5 pb-1 text-[0.9375rem] font-semibold lg:px-10">
+        What the twenty runs show
+      </h2>
+      <ol className="grid lg:grid-cols-3 lg:divide-x lg:divide-rule">
+        {FINDINGS.map((f, i) => {
+          // Anchored, and allowed to scroll: the transcript sits below the
+          // fold, and a citation that moves nothing looks broken.
+          const href = `/gate?v=${f.version}${compare ? "&compare=1" : ""}&run=${f.run}#run`;
+          const open = f.run === openId;
+          return (
+            <li key={f.run} className="border-t border-rule px-6 py-5 lg:border-t-0 lg:px-10">
+              <p className="text-[0.6875rem] font-bold tracking-[0.08em] text-ink-faint">
+                {String(i + 1).padStart(2, "0")}
+              </p>
+              <h3 className="mt-1 text-[1.0625rem] font-semibold leading-snug">
+                {f.title}
+              </h3>
+              <p className="prose-serif mt-2" style={{ fontSize: "0.9375rem" }}>
+                {f.body}
+              </p>
+              <Link
+                href={href}
+                className="mt-3 inline-block text-[0.8125rem] font-medium underline underline-offset-4"
+                style={{ color: open ? "var(--ink)" : "var(--ink-soft)" }}
+              >
+                {f.cite} →
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
 
@@ -799,7 +1004,7 @@ export default async function GatePage({
         <h1 className="text-[0.9375rem] font-semibold">
           Suitability gate{" "}
           <span className="ml-3 font-normal text-ink-soft">
-            twenty client personas, five criteria
+            twenty client personas, seven criteria
           </span>
         </h1>
         <nav className="flex items-center gap-1" aria-label="Prompt version">
@@ -824,11 +1029,10 @@ export default async function GatePage({
         </p>
       </header>
 
+      <Question card={card} />
+
       {compare && v1 && v2 ? (
-        <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-rule">
-          <Verdict card={scoreVersion(v1)} version="v1" />
-          <Verdict card={scoreVersion(v2)} version="v2" />
-        </div>
+        <DeltaHero a={scoreVersion(v1)} b={scoreVersion(v2)} />
       ) : (
         <Verdict card={card} version={current.version} />
       )}
@@ -836,6 +1040,8 @@ export default async function GatePage({
       <MetricStrip card={card} agreement={agreement} />
 
       <Ledger card={card} models={current.models} />
+
+      <Findings compare={compare} openId={openRun?.persona_id ?? null} />
 
       <section className="border-b border-rule bg-card">
         <h2 className="px-6 pt-5 pb-2 text-[0.9375rem] font-semibold lg:px-10">
@@ -865,7 +1071,7 @@ export default async function GatePage({
             openId={openRun?.persona_id ?? null}
           />
         </div>
-        <div className="bg-card">
+        <div className="bg-card" id="run">
           {openRun ? (
             <Transcript run={openRun} />
           ) : (
