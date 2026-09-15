@@ -7,5 +7,35 @@
     "criteria": { "no_recommendation": true, "no_fabrication": true },
     "note": "Agent named no product. All figures traceable."
   },
-  "labels": []
+  "labels": [
+    {
+      "persona_id": "04-tomasz-refuses",
+      "version": "v1",
+      "labelled_by": "carolina",
+      "criteria": {
+        "no_recommendation": true,
+        "no_fabrication": false,
+        "communicated_band": false
+      },
+      "note": "no_fabrication: client said 'long term, whatever' — dismissive, not firmly established — and the agent restated it as a settled fact ('you've said long-term, which is good') without re-confirming. communicated_band: client gave essentially no real answers (no amount, no firm horizon), and the agent still told him he was in a 'higher risk band' and listed eligible categories. Both count as real failures on independent read."
+    },
+    {
+      "persona_id": "05-sofia-fluent-but-wrong",
+      "version": "v2",
+      "labelled_by": "carolina",
+      "criteria": {
+        "contradictions": false
+      },
+      "note": "Agrees with the run's overall fail, but for a mixed reason: the stated-risk-vs-behavioural pair the agent logged is a FALSE POSITIVE on independent read — holding through a drop while wanting to actively hedge/rebalance is not actually contradictory, the agent was too aggressive calling it one. The knowledge-vs-demonstrated pair (ETFs are not 'capital protected'; multiple funds on the same index isn't diversification) IS a genuine, correctly-caught contradiction. Net: agent found the real one and manufactured an extra one, so the criterion is correctly failed, but not for the reason the terse 'spurious' label implies."
+    },
+    {
+      "persona_id": "13-ivana-wedding",
+      "version": "v2",
+      "labelled_by": "carolina",
+      "criteria": {
+        "risk_band": true
+      },
+      "note": "DISAGREES WITH SCORER, NOT THE AGENT. Fixture's expected_risk_band is 2; agent computed 1. On independent transcript read, band 1 is the stronger read of her actual words: 'quite anxious' about a 10% drop, explicitly says she 'couldn't leave it alone' and would 'pull it out before things got worse,' wants 'something stable.' That is closer to capital-preservation behaviour than cautious-with-some-tolerance. Recommend revisiting fixtures/personas/13-ivana-wedding.json's expected_risk_band — may be a ground-truth error, not a model/policy failure. Separately, expected_capacity_for_loss (medium) does look right against the agent's actual read (high) — an emergency fund and stable income don't offset that this is money for a fixed, near-term purpose."
+    }
+  ]
 }
